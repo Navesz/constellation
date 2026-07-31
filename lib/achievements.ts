@@ -42,6 +42,7 @@ export type AuditSourceFailureReason =
 export type AuditSourceDiagnostic = {
   reason: AuditSourceFailureReason;
   message: string;
+  retryAt?: string;
 };
 
 export type AuditResponse = {

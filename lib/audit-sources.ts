@@ -1,4 +1,5 @@
 import type { AuditResponse, AuditSourceAvailability } from "./achievements";
+import { formatGitHubRetryAt } from "./github-request.ts";
 
 export type AuditEvidenceSource = {
   id: "profile" | "achievements" | "mergedPullRequests" | "repositories";
@@ -27,7 +28,10 @@ function unavailableResult(
   source: "achievements" | "mergedPullRequests" | "repositories",
 ) {
   const diagnostic = audit.sourceDiagnostics?.[source];
-  return diagnostic ? `indisponível · ${diagnostic.message}` : "leitura indisponível";
+  if (!diagnostic) return "leitura indisponível";
+
+  const retryLabel = diagnostic.retryAt ? formatGitHubRetryAt(diagnostic.retryAt) : null;
+  return `indisponível · ${diagnostic.message}${retryLabel ? ` · tente novamente após ${retryLabel}` : ""}`;
 }
 
 export function buildAuditEvidenceSources(audit: AuditResponse): AuditEvidenceSource[] {

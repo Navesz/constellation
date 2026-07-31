@@ -141,7 +141,10 @@ test("reports a required-profile rate limit without starting secondary lookups",
   });
   globalThis.fetch = async () => {
     requestCount += 1;
-    return new Response("Rate limited", { status: 429 });
+    return new Response("Rate limited", {
+      status: 429,
+      headers: { "x-ratelimit-reset": "2208988800" },
+    });
   };
 
   const worker = await loadWorker();
@@ -153,7 +156,8 @@ test("reports a required-profile rate limit without starting secondary lookups",
 
   assert.equal(response.status, 429);
   assert.deepEqual(await response.json(), {
-    error: "O GitHub limitou novas consultas por alguns minutos. Tente novamente em breve.",
+    error: "O GitHub limitou novas consultas. Tente novamente após 2040-01-01 00:00:00 UTC.",
+    retryAt: "2040-01-01T00:00:00.000Z",
   });
   assert.equal(requestCount, 1);
 });
