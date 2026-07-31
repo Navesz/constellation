@@ -1,6 +1,7 @@
 import { selectNextMission, type AchievementProgress, type AuditResponse } from "./achievements.ts";
 import { buildAuditEvidenceSources } from "./audit-sources.ts";
 import { constellationExportFilename } from "./export-filename.ts";
+import { githubAchievementDetailUrl } from "./github-profile.ts";
 import { compareProfiles } from "./profile-comparison.ts";
 
 export type AuditReportOptions = {
@@ -44,7 +45,7 @@ function achievementStatus(achievement: AchievementProgress) {
   return "não visível no perfil";
 }
 
-function reportAchievement(achievement: AchievementProgress) {
+function reportAchievement(achievement: AchievementProgress, profileLogin: string) {
   const details = [
     achievementStatus(achievement),
     escapeMarkdown(achievement.progressLabel),
@@ -53,7 +54,11 @@ function reportAchievement(achievement: AchievementProgress) {
   const documentation = achievement.documentationUrl
     ? ` · [fonte oficial](${achievement.documentationUrl})`
     : "";
-  return `- **${escapeMarkdown(achievement.name)}** — ${details.join(" · ")}${documentation}`;
+  const detailUrl = achievement.unlocked
+    ? githubAchievementDetailUrl(profileLogin, achievement.slug)
+    : null;
+  const detail = detailUrl ? ` · [eventos no GitHub](${detailUrl})` : "";
+  return `- **${escapeMarkdown(achievement.name)}** — ${details.join(" · ")}${detail}${documentation}`;
 }
 
 function appendEvidenceTable(lines: string[], audit: AuditResponse, heading: string) {
@@ -126,7 +131,7 @@ export function buildAuditMarkdown({ audit, comparison, shareUrl }: AuditReportO
 
   lines.push("", "## Conquistas", "");
   if (audit.achievements.length > 0) {
-    lines.push(...audit.achievements.map(reportAchievement));
+    lines.push(...audit.achievements.map((achievement) => reportAchievement(achievement, profile.login)));
   } else if (sources.achievements === "unavailable") {
     lines.push("A fonte de conquistas estava indisponível nesta leitura.");
   } else {

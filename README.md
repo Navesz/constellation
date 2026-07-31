@@ -18,6 +18,10 @@ O mapa pode ser filtrado por conquistas visíveis, sinais com próximo marco
 mensurável ou estados sem contador público. Os filtros se sobrepõem de propósito
 e nunca alteram a classificação de confiança da auditoria.
 
+Cada conquista visível oferece um link direto para seu detalhe no GitHub, onde
+o próprio GitHub pode exibir os eventos associados conforme a permissão de quem
+abre a página. Esses links também acompanham o relatório Markdown e a comparação.
+
 Cada auditoria tem uma URL compartilhável no formato `/?login=octocat`. O
 painel também separa contagens medidas pela API de mínimos confirmados pelo
 nível do selo, para não apresentar estimativas como valores exatos.

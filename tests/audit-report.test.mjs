@@ -72,6 +72,10 @@ test("builds a portable report with public signals, repository, achievements and
   assert.match(markdown, /### \[hello-world\]\(https:\/\/github\.com\/octocat\/Hello-World\)/);
   assert.match(markdown, /A repository \\\| with a table-breaking description/);
   assert.match(markdown, /\*\*Pull Shark\*\* — visível · nível 1 · 4 medidos/);
+  assert.match(
+    markdown,
+    /\[eventos no GitHub\]\(https:\/\/github\.com\/octocat\?achievement=pull-shark&tab=achievements\)/,
+  );
   assert.match(markdown, /Próximo marco: 16\./);
   assert.match(markdown, /histórico local do navegador não está incluído/);
   assert.match(markdown, /\[Abrir auditoria no Constellation\]\(https:\/\/example\.test\/\?login=octocat\)/);
@@ -131,6 +135,10 @@ test("identifies historical achievements and links their official context", () =
   });
 
   assert.match(markdown, /\*\*Mars 2020 Contributor\*\* — histórica · visível/);
+  assert.match(
+    markdown,
+    /\[eventos no GitHub\]\(https:\/\/github\.com\/octocat\?achievement=mars-2020-contributor&tab=achievements\)/,
+  );
   assert.match(markdown, /\[fonte oficial\]\(https:\/\/docs\.github\.com\//);
   assert.doesNotMatch(markdown, /Próximo marco: 1\./);
 });

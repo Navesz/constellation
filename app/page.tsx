@@ -42,7 +42,7 @@ import {
 } from "@/lib/audit-request";
 import { auditReportFilename, buildAuditMarkdown } from "@/lib/audit-report";
 import { buildAuditEvidenceSources } from "@/lib/audit-sources";
-import { normalizeGitHubLogin } from "@/lib/github-profile";
+import { githubAchievementDetailUrl, normalizeGitHubLogin } from "@/lib/github-profile";
 import { compareProfiles, comparisonAchievementLabel } from "@/lib/profile-comparison";
 
 const DEFAULT_LOGIN = "Navesz";
@@ -323,7 +323,16 @@ function ProgressBar({ achievement }: { achievement: AchievementProgress }) {
   );
 }
 
-function AchievementCard({ achievement }: { achievement: AchievementProgress }) {
+function AchievementCard({
+  achievement,
+  profileLogin,
+}: {
+  achievement: AchievementProgress;
+  profileLogin: string;
+}) {
+  const detailUrl = achievement.unlocked
+    ? githubAchievementDetailUrl(profileLogin, achievement.slug)
+    : null;
   const statusLabel =
     achievement.badgeStatus === "unavailable"
       ? "Selo indisponível"
@@ -361,15 +370,31 @@ function AchievementCard({ achievement }: { achievement: AchievementProgress }) 
       <h3>{achievement.name}</h3>
       <p>
         {achievement.description}
-        {achievement.documentationUrl ? (
-          <>
-            {" "}
-            <a href={achievement.documentationUrl} target="_blank" rel="noreferrer">
+      </p>
+      {achievement.documentationUrl || detailUrl ? (
+        <span className="achievement-links">
+          {detailUrl ? (
+            <a
+              href={detailUrl}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`Abrir os eventos de ${achievement.name} no GitHub`}
+            >
+              Eventos no GitHub <span aria-hidden="true">↗</span>
+            </a>
+          ) : null}
+          {achievement.documentationUrl ? (
+            <a
+              href={achievement.documentationUrl}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`Abrir a fonte oficial de ${achievement.name}`}
+            >
               Fonte oficial <span aria-hidden="true">↗</span>
             </a>
-          </>
-        ) : null}
-      </p>
+          ) : null}
+        </span>
+      ) : null}
       <span className={`confidence confidence-${achievement.measurementKind}`}>
         {achievement.confidenceLabel}
       </span>
@@ -610,21 +635,52 @@ function ProfileComparisonPanel({
       </div>
 
       <div className="comparison-achievements" aria-label="Conquistas comparadas">
-        {comparison.achievements.map((achievement) => (
-          <article key={achievement.slug}>
-            <h3>{achievement.name}</h3>
-            <div>
-              <span className={achievement.primary.unlocked ? "is-visible" : ""}>
-                <small>@{primary.profile.login}</small>
-                {comparisonAchievementLabel(achievement.primary)}
-              </span>
-              <span className={achievement.secondary.unlocked ? "is-visible" : ""}>
-                <small>@{secondary.profile.login}</small>
-                {comparisonAchievementLabel(achievement.secondary)}
-              </span>
-            </div>
-          </article>
-        ))}
+        {comparison.achievements.map((achievement) => {
+          const primaryDetailUrl = achievement.primary.unlocked
+            ? githubAchievementDetailUrl(primary.profile.login, achievement.slug)
+            : null;
+          const secondaryDetailUrl = achievement.secondary.unlocked
+            ? githubAchievementDetailUrl(secondary.profile.login, achievement.slug)
+            : null;
+
+          return (
+            <article key={achievement.slug}>
+              <h3>{achievement.name}</h3>
+              <div>
+                <span className={achievement.primary.unlocked ? "is-visible" : ""}>
+                  <small>@{primary.profile.login}</small>
+                  {comparisonAchievementLabel(achievement.primary)}
+                  {primaryDetailUrl ? (
+                    <a
+                      className="comparison-achievement-link"
+                      href={primaryDetailUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`Abrir os eventos de ${achievement.name} para ${primary.profile.login}`}
+                    >
+                      eventos <span aria-hidden="true">↗</span>
+                    </a>
+                  ) : null}
+                </span>
+                <span className={achievement.secondary.unlocked ? "is-visible" : ""}>
+                  <small>@{secondary.profile.login}</small>
+                  {comparisonAchievementLabel(achievement.secondary)}
+                  {secondaryDetailUrl ? (
+                    <a
+                      className="comparison-achievement-link"
+                      href={secondaryDetailUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`Abrir os eventos de ${achievement.name} para ${secondary.profile.login}`}
+                    >
+                      eventos <span aria-hidden="true">↗</span>
+                    </a>
+                  ) : null}
+                </span>
+              </div>
+            </article>
+          );
+        })}
       </div>
     </section>
   );
@@ -1335,7 +1391,11 @@ function Observatory() {
           {filteredAchievements.length ? (
             <section className="achievement-grid" id="achievement-map">
               {filteredAchievements.map((achievement) => (
-                <AchievementCard key={achievement.slug} achievement={achievement} />
+                <AchievementCard
+                  key={achievement.slug}
+                  achievement={achievement}
+                  profileLogin={audit.profile.login}
+                />
               ))}
             </section>
           ) : (
