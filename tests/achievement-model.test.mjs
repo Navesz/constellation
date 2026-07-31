@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAchievementProgress, selectNextMission } from "../lib/achievements.ts";
+import {
+  ACHIEVEMENT_CATALOG_REVIEWED_AT,
+  GITHUB_ACHIEVEMENTS_REFERENCE_URL,
+  GITHUB_COMMUNITY_ACHIEVEMENT_NOTICE_URL,
+  achievementCriteriaLabel,
+  buildAchievementProgress,
+  selectNextMission,
+} from "../lib/achievements.ts";
 import {
   githubAchievementDetailUrl,
   normalizeGitHubLogin,
@@ -148,6 +155,7 @@ test("models official historical achievements without making them actionable", (
   assert.equal(arctic.earningStatus, "historical");
   assert.match(arctic.documentationUrl, /^https:\/\/archiveprogram\.github\.com\//);
   assert.equal(selectNextMission(progress), null);
+  assert.equal(achievementCriteriaLabel(mars), "evento histórico com contexto oficial");
 });
 
 test("keeps newly released or unknown achievements discoverable", () => {
@@ -166,4 +174,23 @@ test("keeps newly released or unknown achievements discoverable", () => {
   assert.equal(discovered.nextThreshold, null);
   assert.equal(discovered.measurementKind, "not-public");
   assert.equal(discovered.progressLabel, "selo público detectado");
+  assert.equal(achievementCriteriaLabel(discovered), "critério ainda não catalogado");
+});
+
+test("publishes review provenance and an anti-spam guardrail for Galaxy Brain", () => {
+  const progress = buildAchievementProgress([], {});
+  const galaxyBrain = progress.find((item) => item.slug === "galaxy-brain");
+  const pullShark = progress.find((item) => item.slug === "pull-shark");
+
+  assert.equal(ACHIEVEMENT_CATALOG_REVIEWED_AT, "2026-07-31");
+  assert.match(GITHUB_ACHIEVEMENTS_REFERENCE_URL, /^https:\/\/docs\.github\.com\//);
+  assert.match(GITHUB_COMMUNITY_ACHIEVEMENT_NOTICE_URL, /^https:\/\/github\.com\/orgs\/community\/discussions\//);
+  assert.ok(galaxyBrain);
+  assert.match(galaxyBrain.nextAction, /Community oficial não concede mais conquistas/);
+  assert.equal(galaxyBrain.documentationUrl, GITHUB_COMMUNITY_ACHIEVEMENT_NOTICE_URL);
+  assert.ok(pullShark);
+  assert.equal(
+    achievementCriteriaLabel(pullShark),
+    "critério catalogado; recurso do GitHub em prévia pública",
+  );
 });
