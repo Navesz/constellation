@@ -20,6 +20,7 @@ import {
   type AuditTimelineEntry,
 } from "@/lib/audit-history";
 import { selectNextMission, type AchievementProgress, type AuditResponse } from "@/lib/achievements";
+import { auditReportFilename, buildAuditMarkdown } from "@/lib/audit-report";
 import { normalizeGitHubLogin } from "@/lib/github-profile";
 import { compareProfiles, comparisonAchievementLabel } from "@/lib/profile-comparison";
 
@@ -612,14 +613,20 @@ function Observatory() {
     router.push(`/?${params.toString()}`, { scroll: false });
   }
 
-  async function copyShareLink() {
+  function buildShareUrl(comparison?: string | null) {
     const shareUrl = new URL(window.location.href);
     shareUrl.searchParams.set("login", audit?.profile.login ?? routeLogin);
-    if (comparisonLogin) {
-      shareUrl.searchParams.set("compare", comparisonLogin);
+    if (comparison) {
+      shareUrl.searchParams.set("compare", comparison);
     } else {
       shareUrl.searchParams.delete("compare");
     }
+
+    return shareUrl;
+  }
+
+  async function copyShareLink() {
+    const shareUrl = buildShareUrl(comparisonLogin);
 
     try {
       await navigator.clipboard.writeText(shareUrl.toString());
@@ -628,6 +635,25 @@ function Observatory() {
     } catch {
       setCopied(false);
     }
+  }
+
+  function downloadAuditReport() {
+    if (!audit) return;
+
+    const comparison = comparisonAudit ?? null;
+    const markdown = buildAuditMarkdown({
+      audit,
+      comparison,
+      shareUrl: buildShareUrl(comparison?.profile.login).toString(),
+    });
+    const blobUrl = URL.createObjectURL(new Blob([markdown], { type: "text/markdown;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = auditReportFilename(audit.profile.login, comparison?.profile.login);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
   }
 
   function clearLocalProgress() {
@@ -761,9 +787,19 @@ function Observatory() {
                 <span><strong>{compactNumber(audit.profile.followers)}</strong> seguidores</span>
                 <span><strong>{compactNumber(audit.profile.publicRepos)}</strong> repositórios</span>
               </div>
-              <button className="share-button" type="button" onClick={copyShareLink}>
-                {copied ? "Link copiado" : "Copiar auditoria"}
-              </button>
+              <div className="profile-actions">
+                <button className="share-button" type="button" onClick={copyShareLink}>
+                  {copied ? "Link copiado" : "Copiar link"}
+                </button>
+                <button
+                  className="report-button"
+                  type="button"
+                  onClick={downloadAuditReport}
+                  disabled={comparisonLoading}
+                >
+                  {comparisonLoading ? "Preparando comparação" : "Baixar relatório .md"}
+                </button>
+              </div>
             </div>
           </section>
 
