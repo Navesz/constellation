@@ -1,4 +1,5 @@
 import { selectNextMission, type AchievementProgress, type AuditResponse } from "./achievements.ts";
+import { buildAuditEvidenceSources } from "./audit-sources.ts";
 import { compareProfiles } from "./profile-comparison.ts";
 
 export type AuditReportOptions = {
@@ -46,6 +47,19 @@ function reportAchievement(achievement: AchievementProgress) {
     escapeMarkdown(achievement.confidenceLabel),
   ];
   return `- **${escapeMarkdown(achievement.name)}** — ${details.join(" · ")}`;
+}
+
+function appendEvidenceTable(lines: string[], audit: AuditResponse, heading: string) {
+  lines.push(
+    "",
+    heading,
+    "",
+    "| Fonte | Método | Estado | Resultado | Evidência |",
+    "| --- | --- | --- | --- | --- |",
+    ...buildAuditEvidenceSources(audit).map((source) => (
+      `| ${escapeMarkdown(source.label)} | ${escapeMarkdown(source.method)} | ${source.status === "available" ? "disponível" : "indisponível"} | ${escapeMarkdown(source.result)} | [${escapeMarkdown(source.urlLabel)}](${source.url}) |`
+    )),
+  );
 }
 
 function safeFilenameSegment(value: string) {
@@ -112,6 +126,8 @@ export function buildAuditMarkdown({ audit, comparison, shareUrl }: AuditReportO
     }
   }
 
+  appendEvidenceTable(lines, audit, "## Fontes e método");
+
   lines.push("", "## Conquistas", "");
   if (audit.achievements.length > 0) {
     lines.push(...audit.achievements.map(reportAchievement));
@@ -151,6 +167,11 @@ export function buildAuditMarkdown({ audit, comparison, shareUrl }: AuditReportO
       `Conquistas visíveis em comum: **${numberFormatter.format(comparisonResult.sharedUnlocked)}**. `
         + `Exclusivas de @${escapeMarkdown(profile.login)}: **${numberFormatter.format(comparisonResult.primaryOnlyUnlocked.length)}**. `
         + `Exclusivas de @${escapeMarkdown(comparison.profile.login)}: **${numberFormatter.format(comparisonResult.secondaryOnlyUnlocked.length)}**.`,
+    );
+    appendEvidenceTable(
+      lines,
+      comparison,
+      `### Fontes de @${escapeMarkdown(comparison.profile.login)}`,
     );
   }
 
