@@ -18,6 +18,11 @@ lista de repositórios ou a leitura dos selos falhar temporariamente, a auditori
 continua com os dados disponíveis e identifica cada lacuna em vez de exibir
 zeros enganosos.
 
+Auditorias completas também formam um histórico local com até 12 estados por
+perfil e oito perfis recentes. Essa memória fica somente no navegador, não é
+incluída nos links compartilhados e pode ser apagada por perfil na interface.
+Leituras parciais nunca substituem uma linha de base completa.
+
 ## Desenvolvimento
 
 ```bash

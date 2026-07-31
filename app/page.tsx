@@ -3,6 +3,20 @@
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
+import {
+  AUDIT_HISTORY_STORAGE_KEY,
+  MAX_SNAPSHOTS_PER_PROFILE,
+  MAX_TRACKED_PROFILES,
+  appendAuditSnapshot,
+  compareAuditSnapshots,
+  createAuditSnapshot,
+  findComparisonSnapshot,
+  parseAuditHistory,
+  removeProfileHistory,
+  serializeAuditHistory,
+  type AuditChanges,
+  type AuditSnapshot,
+} from "@/lib/audit-history";
 import type { AchievementProgress, AuditResponse } from "@/lib/achievements";
 
 const DEFAULT_LOGIN = "Navesz";
@@ -18,8 +32,23 @@ const achievementGlyphs: Record<string, string> = {
   "public-sponsor": "♥",
 };
 
+type LocalProgressMemory = {
+  current: AuditSnapshot;
+  previous: AuditSnapshot | null;
+  changes: AuditChanges | null;
+  recorded: boolean;
+  storageAvailable: boolean;
+  cleared: boolean;
+};
+
 function compactNumber(value: number) {
   return new Intl.NumberFormat("pt-BR", { notation: "compact" }).format(value);
+}
+
+function signedNumber(value: number) {
+  if (value > 0) return `+${value}`;
+  if (value < 0) return `−${Math.abs(value)}`;
+  return "0";
 }
 
 function normalizedLogin(value: string | null) {
@@ -80,15 +109,98 @@ function AchievementCard({ achievement }: { achievement: AchievementProgress }) 
   );
 }
 
+function ProgressHistory({
+  audit,
+  memory,
+  onClear,
+}: {
+  audit: AuditResponse;
+  memory: LocalProgressMemory;
+  onClear: () => void;
+}) {
+  const changedSignals = memory.changes
+    ? [
+        { value: memory.changes.visibleAchievements, label: "conquistas visíveis" },
+        { value: memory.changes.mergedPullRequests, label: "PRs mesclados" },
+        { value: memory.changes.topRepositoryStars, label: "estrelas no melhor projeto" },
+        { value: memory.changes.publicRepositories, label: "repositórios públicos" },
+      ].filter((signal): signal is { value: number; label: string } => signal.value !== null && signal.value !== 0)
+    : [];
+  const unlockedNames = (memory.changes?.newlyUnlockedSlugs ?? []).map(
+    (slug) => audit.achievements.find((achievement) => achievement.slug === slug)?.name ?? slug,
+  );
+  const hasChanges = changedSignals.length > 0 || unlockedNames.length > 0;
+  const previousDate = memory.previous
+    ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(
+        new Date(memory.previous.capturedAt),
+      )
+    : null;
+
+  return (
+    <section className="history-panel" aria-labelledby="history-title" aria-live="polite">
+      <div className="history-heading">
+        <div>
+          <p className="kicker"><span /> memória local</p>
+          <h2 id="history-title">O pulso entre duas leituras.</h2>
+        </div>
+        <p>
+          O histórico fica somente neste navegador, guarda até {MAX_SNAPSHOTS_PER_PROFILE} estados completos por perfil em {MAX_TRACKED_PROFILES} perfis recentes e nunca entra no link compartilhado.
+        </p>
+      </div>
+
+      {!memory.storageAvailable ? (
+        <p className="history-empty">Este navegador não permitiu salvar o histórico. A auditoria atual continua funcionando normalmente.</p>
+      ) : memory.cleared ? (
+        <p className="history-empty">Histórico deste perfil apagado. Uma nova leitura criará outra linha de base.</p>
+      ) : !memory.previous ? (
+        <p className="history-empty">
+          {memory.recorded
+            ? "Linha de base salva. Volte ou remapeie o perfil depois para enxergar o que mudou."
+            : "Esta leitura está parcial e não substituiu sua última linha de base."}
+        </p>
+      ) : hasChanges ? (
+        <>
+          <p className="history-since">Mudanças desde o último estado diferente, observado em {previousDate}.</p>
+          <div className="history-signal-grid">
+            {changedSignals.map((signal) => (
+              <article className={signal.value < 0 ? "is-negative" : ""} key={signal.label}>
+                <strong>{signedNumber(signal.value)}</strong>
+                <span>{signal.label}</span>
+              </article>
+            ))}
+            {unlockedNames.length ? (
+              <article className="history-unlocked">
+                <strong>✦</strong>
+                <span>Novo selo: {unlockedNames.join(", ")}</span>
+              </article>
+            ) : null}
+          </div>
+        </>
+      ) : (
+        <p className="history-empty">Nenhuma mudança nos sinais comparáveis desde {previousDate}.</p>
+      )}
+
+      {memory.storageAvailable && !memory.cleared && (memory.recorded || memory.previous) ? (
+        <button className="history-clear" type="button" onClick={onClear}>Apagar histórico deste perfil</button>
+      ) : null}
+      {!memory.recorded && memory.previous && !memory.cleared ? (
+        <p className="history-note">Leitura parcial: a linha de base anterior foi preservada.</p>
+      ) : null}
+    </section>
+  );
+}
+
 function Observatory() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const routeLogin = normalizedLogin(searchParams.get("login"));
   const [audit, setAudit] = useState<AuditResponse | null>(null);
   const [error, setError] = useState("");
+  const [errorLogin, setErrorLogin] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [localProgress, setLocalProgress] = useState<LocalProgressMemory | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -103,13 +215,47 @@ function Observatory() {
         if (!response.ok) {
           throw new Error(payload.error || "Não foi possível analisar esse perfil.");
         }
+        if (controller.signal.aborted) return;
+
+        const currentSnapshot = createAuditSnapshot(payload);
+        try {
+          const history = parseAuditHistory(window.localStorage.getItem(AUDIT_HISTORY_STORAGE_KEY));
+          const previous = findComparisonSnapshot(history, currentSnapshot);
+          const changes = previous ? compareAuditSnapshots(currentSnapshot, previous) : null;
+
+          if (currentSnapshot.complete) {
+            const nextHistory = appendAuditSnapshot(history, currentSnapshot);
+            window.localStorage.setItem(AUDIT_HISTORY_STORAGE_KEY, serializeAuditHistory(nextHistory));
+          }
+
+          setLocalProgress({
+            current: currentSnapshot,
+            previous,
+            changes,
+            recorded: currentSnapshot.complete,
+            storageAvailable: true,
+            cleared: false,
+          });
+        } catch {
+          setLocalProgress({
+            current: currentSnapshot,
+            previous: null,
+            changes: null,
+            recorded: false,
+            storageAvailable: false,
+            cleared: false,
+          });
+        }
 
         setAudit(payload);
         setError("");
+        setErrorLogin("");
       } catch (caught) {
         if (caught instanceof DOMException && caught.name === "AbortError") return;
         setAudit(null);
+        setLocalProgress(null);
         setError(caught instanceof Error ? caught.message : "Falha inesperada na auditoria.");
+        setErrorLogin(routeLogin);
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -130,10 +276,12 @@ function Observatory() {
       })[0];
   }, [audit]);
 
-  const routeIsPending = Boolean(
-    audit && audit.profile.login.toLowerCase() !== routeLogin.toLowerCase(),
+  const auditIsCurrent = Boolean(
+    audit && audit.profile.login.toLowerCase() === routeLogin.toLowerCase(),
   );
-  const showLoading = loading || routeIsPending;
+  const routeIsPending = Boolean(audit && !auditIsCurrent);
+  const errorIsCurrent = Boolean(error && errorLogin.toLowerCase() === routeLogin.toLowerCase());
+  const showLoading = loading || (!auditIsCurrent && !errorIsCurrent);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -142,7 +290,9 @@ function Observatory() {
 
     setLoading(true);
     setAudit(null);
+    setLocalProgress(null);
     setError("");
+    setErrorLogin("");
     setCopied(false);
 
     if (requestedLogin === routeLogin) {
@@ -163,6 +313,34 @@ function Observatory() {
       window.setTimeout(() => setCopied(false), 2400);
     } catch {
       setCopied(false);
+    }
+  }
+
+  function clearLocalProgress() {
+    if (!audit || !localProgress) return;
+
+    try {
+      const history = parseAuditHistory(window.localStorage.getItem(AUDIT_HISTORY_STORAGE_KEY));
+      const nextHistory = removeProfileHistory(history, audit.profile.login);
+
+      if (Object.keys(nextHistory).length) {
+        window.localStorage.setItem(AUDIT_HISTORY_STORAGE_KEY, serializeAuditHistory(nextHistory));
+      } else {
+        window.localStorage.removeItem(AUDIT_HISTORY_STORAGE_KEY);
+      }
+
+      setLocalProgress({
+        ...localProgress,
+        previous: null,
+        changes: null,
+        recorded: false,
+        cleared: true,
+      });
+    } catch {
+      setLocalProgress({
+        ...localProgress,
+        storageAvailable: false,
+      });
     }
   }
 
@@ -217,7 +395,7 @@ function Observatory() {
         </form>
       </section>
 
-      {error ? (
+      {errorIsCurrent ? (
         <section className="error-panel" role="alert">
           <span aria-hidden="true">!</span>
           <div>
@@ -227,13 +405,13 @@ function Observatory() {
         </section>
       ) : null}
 
-      {showLoading && !audit ? (
+      {showLoading && (!audit || routeIsPending) ? (
         <section className="loading-grid" aria-label="Carregando auditoria" aria-live="polite">
           <div /><div /><div /><div />
         </section>
       ) : null}
 
-      {audit ? (
+      {audit && auditIsCurrent ? (
         <div className="dashboard">
           {audit.warnings.length ? (
             <section className="data-warning" role="status" aria-label="Auditoria com dados parciais">
@@ -298,6 +476,10 @@ function Observatory() {
               <p>projetos públicos</p>
             </article>
           </section>
+
+          {localProgress ? (
+            <ProgressHistory audit={audit} memory={localProgress} onClear={clearLocalProgress} />
+          ) : null}
 
           {nextMission ? (
             <section className="mission">
