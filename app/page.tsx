@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChangeEvent, FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -1135,14 +1136,17 @@ function Observatory() {
           <span className="brand-mark" aria-hidden="true">✦</span>
           <span>Constellation</span>
         </a>
-        <a
-          className="nav-link"
-          href="https://github.com/Navesz/constellation"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Projeto aberto <span aria-hidden="true">↗</span>
-        </a>
+        <div className="nav-actions">
+          <Link className="nav-link" href="/docs">Guia da API</Link>
+          <a
+            className="nav-link nav-link-external"
+            href="https://github.com/Navesz/constellation"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Projeto aberto <span aria-hidden="true">↗</span>
+          </a>
+        </div>
       </nav>
 
       <section className="hero" id="top">

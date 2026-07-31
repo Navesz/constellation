@@ -5,10 +5,13 @@ export const PUBLIC_SITE_URL =
   "https://constellation-profile.leonardonavesworking.chatgpt.site";
 export const OPENAPI_PATH = "/api/openapi.json";
 export const OPENAPI_MEDIA_TYPE = "application/openapi+json";
+export const API_DOCS_PATH = "/docs";
 export const OPENAPI_LINK_HEADER =
   `<${OPENAPI_PATH}>; rel="service-desc"; type="${OPENAPI_MEDIA_TYPE}"`;
+export const API_DOCS_LINK_HEADER =
+  `<${API_DOCS_PATH}>; rel="service-doc"; type="text/html"`;
 export const PUBLIC_API_LINK_HEADER =
-  `${AUDIT_SCHEMA_LINK_HEADER}, ${OPENAPI_LINK_HEADER}`;
+  `${AUDIT_SCHEMA_LINK_HEADER}, ${OPENAPI_LINK_HEADER}, ${API_DOCS_LINK_HEADER}`;
 
 const errorSchema = {
   type: "object",
@@ -186,7 +189,7 @@ export const openApiDocument = {
     },
   },
   externalDocs: {
-    description: "Constellation repository and integration notes",
-    url: "https://github.com/Navesz/constellation#readme",
+    description: "Constellation integration guide",
+    url: `${PUBLIC_SITE_URL}${API_DOCS_PATH}`,
   },
 } as const;
