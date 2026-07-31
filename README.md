@@ -17,6 +17,11 @@ Cada auditoria tem uma URL compartilhável no formato `/?login=octocat`. O
 painel também separa contagens medidas pela API de mínimos confirmados pelo
 nível do selo, para não apresentar estimativas como valores exatos.
 
+O mesmo retrato pode ser baixado como um relatório Markdown portátil, incluindo
+fontes indisponíveis e a comparação carregada. O arquivo nunca inclui o
+histórico local do navegador, por isso pode ser anexado a documentação, perfis
+profissionais ou arquivos pessoais sem transportar essa memória privada.
+
 Como o GitHub permite ocultar todas as conquistas ou somente um selo, a ausência
 de um badge público nunca é tratada como contador zero. Nesses casos, cartões e
 comparações mostram progresso não público, e a próxima missão considera apenas

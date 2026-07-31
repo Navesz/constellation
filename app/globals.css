@@ -344,7 +344,15 @@ footer {
   gap: 13px;
 }
 
-.share-button {
+.profile-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.share-button,
+.report-button {
   min-height: 34px;
   border: 1px solid var(--ink);
   padding: 0 12px;
@@ -358,9 +366,19 @@ footer {
   transition: background 160ms ease, color 160ms ease;
 }
 
-.share-button:hover {
+.report-button {
+  border-color: var(--line-strong);
+}
+
+.share-button:hover,
+.report-button:hover:not(:disabled) {
   color: var(--paper-bright);
   background: var(--ink);
+}
+
+.report-button:disabled {
+  cursor: wait;
+  opacity: 0.58;
 }
 
 .metric-grid {
@@ -1411,6 +1429,10 @@ footer {
 
   .profile-side {
     justify-items: start;
+  }
+
+  .profile-actions {
+    justify-content: flex-start;
   }
 
   .metric-grid {
