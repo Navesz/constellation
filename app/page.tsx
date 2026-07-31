@@ -552,7 +552,7 @@ function Observatory() {
         </a>
         <a
           className="nav-link"
-          href="https://github.com/Navesz/github-achievements-lab"
+          href="https://github.com/Navesz/constellation"
           target="_blank"
           rel="noreferrer"
         >

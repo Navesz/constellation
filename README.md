@@ -1,5 +1,8 @@
 # Constellation
 
+Repositório independente do observatório Constellation. O histórico do produto
+foi preservado desde a primeira versão criada no laboratório de conquistas.
+
 Constellation é um observatório público de perfis do GitHub. A aplicação
 combina dados da API pública com as conquistas visíveis no perfil para mostrar:
 
@@ -31,7 +34,7 @@ nem declara um vencedor.
 ## Desenvolvimento
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
