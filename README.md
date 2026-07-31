@@ -26,6 +26,12 @@ fontes indisponíveis e a comparação carregada. O arquivo nunca inclui o
 histórico local do navegador, por isso pode ser anexado a documentação, perfis
 profissionais ou arquivos pessoais sem transportar essa memória privada.
 
+A auditoria atual também pode ser exportada como JSON estruturado. O envelope
+`constellation-audit`, atualmente na versão 1, preserva os dados públicos, os
+diagnósticos de cada fonte e a comparação carregada. Campos de privacidade no
+próprio arquivo registram que o histórico local não foi incluído. Essa exportação
+é separada do backup JSON da memória privada do navegador.
+
 Como o GitHub permite ocultar todas as conquistas ou somente um selo, a ausência
 de um badge público nunca é tratada como contador zero. Nesses casos, cartões e
 comparações mostram progresso não público, e a próxima missão considera apenas

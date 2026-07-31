@@ -33,6 +33,7 @@ import {
   filterAchievements,
   type AchievementFilter,
 } from "@/lib/achievement-filters";
+import { auditDataFilename, serializeAuditDataExport } from "@/lib/audit-export";
 import { auditReportFilename, buildAuditMarkdown } from "@/lib/audit-report";
 import { buildAuditEvidenceSources } from "@/lib/audit-sources";
 import { normalizeGitHubLogin } from "@/lib/github-profile";
@@ -835,6 +836,21 @@ function Observatory() {
     );
   }
 
+  function downloadAuditData() {
+    if (!audit) return;
+
+    const comparison = comparisonAudit ?? null;
+    downloadTextFile(
+      serializeAuditDataExport({
+        audit,
+        comparison,
+        shareUrl: buildShareUrl(comparison?.profile.login).toString(),
+      }),
+      "application/json;charset=utf-8",
+      auditDataFilename(audit.profile.login, comparison?.profile.login),
+    );
+  }
+
   function downloadHistoryBackup() {
     try {
       const history = parseAuditHistory(window.localStorage.getItem(AUDIT_HISTORY_STORAGE_KEY));
@@ -1048,6 +1064,14 @@ function Observatory() {
                   disabled={comparisonLoading}
                 >
                   {comparisonLoading ? "Preparando comparação" : "Baixar relatório .md"}
+                </button>
+                <button
+                  className="data-button"
+                  type="button"
+                  onClick={downloadAuditData}
+                  disabled={comparisonLoading}
+                >
+                  {comparisonLoading ? "Preparando comparação" : "Baixar dados .json"}
                 </button>
               </div>
             </div>

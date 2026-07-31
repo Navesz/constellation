@@ -481,7 +481,8 @@ footer {
 }
 
 .share-button,
-.report-button {
+.report-button,
+.data-button {
   min-height: 34px;
   border: 1px solid var(--ink);
   padding: 0 12px;
@@ -495,17 +496,20 @@ footer {
   transition: background 160ms ease, color 160ms ease;
 }
 
-.report-button {
+.report-button,
+.data-button {
   border-color: var(--line-strong);
 }
 
 .share-button:hover,
-.report-button:hover:not(:disabled) {
+.report-button:hover:not(:disabled),
+.data-button:hover:not(:disabled) {
   color: var(--paper-bright);
   background: var(--ink);
 }
 
-.report-button:disabled {
+.report-button:disabled,
+.data-button:disabled {
   cursor: wait;
   opacity: 0.58;
 }
