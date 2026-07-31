@@ -64,8 +64,8 @@ Auditorias completas também formam um histórico local com até 12 estados por
 perfil e oito perfis recentes. Essa memória fica somente no navegador, não é
 incluída nos links compartilhados e pode ser apagada por perfil na interface.
 Leituras parciais nunca substituem uma linha de base completa. A linha do tempo
-mostra todas as observações distintas, seus quatro sinais e a mudança desde o
-estado anterior.
+mostra todas as observações distintas, seus cinco sinais — seguidores, selos,
+PRs, estrelas e repositórios — e a mudança desde o estado anterior.
 
 Quando existem pelo menos dois perfis nessa memória, o painel mostra órbitas
 recentes ordenadas pela última observação, com um resumo dos quatro sinais e
@@ -75,6 +75,10 @@ Essa memória também pode ser baixada explicitamente como um backup JSON e
 restaurada em outro navegador. A importação valida o formato, mescla estados
 sem apagar observações mais recentes e reaplica os mesmos limites de retenção.
 Esse arquivo é separado do relatório Markdown público.
+
+Backups atuais usam a versão 2 e incluem seguidores. Arquivos da versão 1
+continuam aceitos; como esse sinal não existia neles, o valor antigo permanece
+indisponível até que duas novas leituras permitam calcular uma mudança honesta.
 
 Um segundo perfil pode ser adicionado para comparação. A URL preserva os dois
 logins, o painel calcula o delta como `segundo - principal` e omite qualquer

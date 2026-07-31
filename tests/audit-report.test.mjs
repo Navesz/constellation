@@ -115,7 +115,7 @@ test("includes an honest comparison and omits deltas for unavailable signals", (
   const markdown = buildAuditMarkdown({
     audit: audit(),
     comparison: audit({
-      profile: { ...audit().profile, login: "hubot", publicRepos: 11 },
+      profile: { ...audit().profile, login: "hubot", followers: 19_000, publicRepos: 11 },
       metrics: { mergedPullRequests: null, topRepository: { ...audit().metrics.topRepository, stars: 3_000 } },
       sources: { ...audit().sources, mergedPullRequests: "unavailable" },
       visibleAchievementCount: 3,
@@ -129,6 +129,7 @@ test("includes an honest comparison and omits deltas for unavailable signals", (
   assert.match(markdown, /Delta calculado como @hubot − @octocat/);
   assert.match(markdown, /\| conquistas visíveis \| 2 \| 3 \| \+1 \|/);
   assert.match(markdown, /\| PRs públicos mesclados \| 12 \| indisponível \| indisponível \|/);
+  assert.match(markdown, /\| seguidores \| 18\.400 \| 19\.000 \| \+600 \|/);
   assert.match(markdown, /\| repositórios públicos \| 8 \| 11 \| \+3 \|/);
   assert.match(markdown, /Conquistas visíveis em comum: \*\*1\*\*/);
   assert.match(markdown, /Exclusivas de @hubot: \*\*1\*\*/);

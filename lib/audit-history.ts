@@ -1,15 +1,17 @@
 import { GITHUB_LOGIN_PATTERN } from "./github-profile.ts";
 
+// Preserve the original key so browsers can migrate existing snapshots in place.
 export const AUDIT_HISTORY_STORAGE_KEY = "constellation:audit-history:v1";
 export const AUDIT_HISTORY_BACKUP_FORMAT = "constellation-audit-history";
 export const MAX_SNAPSHOTS_PER_PROFILE = 12;
 export const MAX_TRACKED_PROFILES = 8;
 
 export type AuditSnapshot = {
-  version: 1;
+  version: 2;
   login: string;
   capturedAt: string;
   complete: boolean;
+  followers: number | null;
   visibleAchievementCount: number | null;
   mergedPullRequests: number | null;
   topRepositoryStars: number | null;
@@ -21,7 +23,7 @@ export type AuditHistory = Record<string, AuditSnapshot[]>;
 
 export type AuditHistoryBackup = {
   format: typeof AUDIT_HISTORY_BACKUP_FORMAT;
-  version: 1;
+  version: 2;
   exportedAt: string;
   history: AuditHistory;
 };
@@ -30,6 +32,7 @@ export type RecentAuditProfile = {
   login: string;
   lastObservedAt: string;
   observationCount: number;
+  followers: number | null;
   visibleAchievementCount: number | null;
   mergedPullRequests: number | null;
   topRepositoryStars: number | null;
@@ -37,6 +40,7 @@ export type RecentAuditProfile = {
 };
 
 export type AuditChanges = {
+  followers: number | null;
   visibleAchievements: number | null;
   mergedPullRequests: number | null;
   topRepositoryStars: number | null;
@@ -52,6 +56,7 @@ export type AuditTimelineEntry = {
 type SnapshotInput = {
   profile: {
     login: string;
+    followers: number;
     publicRepos: number;
   };
   metrics: {
@@ -76,33 +81,52 @@ function nullableCount(value: unknown): value is number | null {
   return value === null || (typeof value === "number" && Number.isInteger(value) && value >= 0);
 }
 
-function validSnapshot(value: unknown): value is AuditSnapshot {
-  if (!value || typeof value !== "object") return false;
-  const snapshot = value as Partial<AuditSnapshot>;
+function normalizeSnapshot(value: unknown): AuditSnapshot | null {
+  if (!value || typeof value !== "object") return null;
+  const snapshot = value as Record<string, unknown>;
+  const followers = snapshot.version === 1 && snapshot.followers === undefined
+    ? null
+    : snapshot.followers;
 
-  return (
-    snapshot.version === 1 &&
-    typeof snapshot.login === "string" &&
-    GITHUB_LOGIN_PATTERN.test(snapshot.login) &&
-    typeof snapshot.capturedAt === "string" &&
-    Number.isFinite(Date.parse(snapshot.capturedAt)) &&
-    typeof snapshot.complete === "boolean" &&
-    nullableCount(snapshot.visibleAchievementCount) &&
-    nullableCount(snapshot.mergedPullRequests) &&
-    nullableCount(snapshot.topRepositoryStars) &&
-    typeof snapshot.publicRepositories === "number" &&
-    Number.isInteger(snapshot.publicRepositories) &&
-    snapshot.publicRepositories >= 0 &&
-    (snapshot.unlockedAchievementSlugs === null ||
+  if (
+    (snapshot.version !== 1 && snapshot.version !== 2) ||
+    typeof snapshot.login !== "string" ||
+    !GITHUB_LOGIN_PATTERN.test(snapshot.login) ||
+    typeof snapshot.capturedAt !== "string" ||
+    !Number.isFinite(Date.parse(snapshot.capturedAt)) ||
+    typeof snapshot.complete !== "boolean" ||
+    !nullableCount(followers) ||
+    !nullableCount(snapshot.visibleAchievementCount) ||
+    !nullableCount(snapshot.mergedPullRequests) ||
+    !nullableCount(snapshot.topRepositoryStars) ||
+    typeof snapshot.publicRepositories !== "number" ||
+    !Number.isInteger(snapshot.publicRepositories) ||
+    snapshot.publicRepositories < 0 ||
+    !(snapshot.unlockedAchievementSlugs === null ||
       (Array.isArray(snapshot.unlockedAchievementSlugs) &&
         snapshot.unlockedAchievementSlugs.every((slug) => (
           typeof slug === "string" && /^[a-z0-9-]+$/.test(slug)
         ))))
-  );
+  ) {
+    return null;
+  }
+
+  return {
+    version: 2,
+    login: snapshot.login,
+    capturedAt: snapshot.capturedAt,
+    complete: snapshot.complete,
+    followers,
+    visibleAchievementCount: snapshot.visibleAchievementCount,
+    mergedPullRequests: snapshot.mergedPullRequests,
+    topRepositoryStars: snapshot.topRepositoryStars,
+    publicRepositories: snapshot.publicRepositories,
+    unlockedAchievementSlugs: snapshot.unlockedAchievementSlugs as string[] | null,
+  };
 }
 
-function validBackupHistory(value: unknown): value is AuditHistory {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+function normalizeBackupHistory(value: unknown): AuditHistory | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
 
   const entries = Object.entries(value);
   const normalizedKeys = entries.map(([login]) => profileKey(login));
@@ -110,29 +134,48 @@ function validBackupHistory(value: unknown): value is AuditHistory {
     entries.length > MAX_TRACKED_PROFILES ||
     new Set(normalizedKeys).size !== normalizedKeys.length
   ) {
-    return false;
+    return null;
   }
 
-  return entries.every(([login, snapshots]) => (
-    profileKey(login).length > 0 &&
-    Array.isArray(snapshots) &&
-    snapshots.length > 0 &&
-    snapshots.length <= MAX_SNAPSHOTS_PER_PROFILE &&
-    snapshots.every((snapshot) => (
-      validSnapshot(snapshot) &&
-      snapshot.complete &&
-      snapshot.visibleAchievementCount !== null &&
-      snapshot.mergedPullRequests !== null &&
-      snapshot.topRepositoryStars !== null &&
-      snapshot.unlockedAchievementSlugs !== null &&
-      profileKey(snapshot.login) === profileKey(login)
-    ))
-  ));
+  const normalizedEntries: Array<[string, AuditSnapshot[]]> = [];
+  for (const [login, snapshots] of entries) {
+    if (
+      profileKey(login).length === 0 ||
+      !Array.isArray(snapshots) ||
+      snapshots.length === 0 ||
+      snapshots.length > MAX_SNAPSHOTS_PER_PROFILE
+    ) {
+      return null;
+    }
+
+    const normalizedSnapshots = snapshots.map(normalizeSnapshot);
+    if (normalizedSnapshots.some((snapshot) => (
+      !snapshot ||
+      !snapshot.complete ||
+      snapshot.visibleAchievementCount === null ||
+      snapshot.mergedPullRequests === null ||
+      snapshot.topRepositoryStars === null ||
+      snapshot.unlockedAchievementSlugs === null ||
+      profileKey(snapshot.login) !== profileKey(login)
+    ))) {
+      return null;
+    }
+
+    normalizedEntries.push([
+      profileKey(login),
+      (normalizedSnapshots as AuditSnapshot[]).sort(
+        (left, right) => Date.parse(left.capturedAt) - Date.parse(right.capturedAt),
+      ),
+    ]);
+  }
+
+  return Object.fromEntries(normalizedEntries);
 }
 
 function sameSignals(left: AuditSnapshot, right: AuditSnapshot) {
   return (
     left.complete === right.complete &&
+    left.followers === right.followers &&
     left.visibleAchievementCount === right.visibleAchievementCount &&
     left.mergedPullRequests === right.mergedPullRequests &&
     left.topRepositoryStars === right.topRepositoryStars &&
@@ -145,10 +188,11 @@ export function createAuditSnapshot(audit: SnapshotInput): AuditSnapshot {
   const complete = Object.values(audit.sources).every((source) => source === "available");
 
   return {
-    version: 1,
+    version: 2,
     login: audit.profile.login,
     capturedAt: audit.generatedAt,
     complete,
+    followers: audit.profile.followers,
     visibleAchievementCount: audit.visibleAchievementCount,
     mergedPullRequests: audit.metrics.mergedPullRequests,
     topRepositoryStars:
@@ -173,7 +217,10 @@ export function parseAuditHistory(serialized: string | null): AuditHistory {
         .filter(([, snapshots]) => Array.isArray(snapshots))
         .map(([login, snapshots]) => [
           profileKey(login),
-          (snapshots as unknown[]).filter(validSnapshot).slice(-MAX_SNAPSHOTS_PER_PROFILE),
+          (snapshots as unknown[])
+            .map(normalizeSnapshot)
+            .filter((snapshot): snapshot is AuditSnapshot => snapshot !== null)
+            .slice(-MAX_SNAPSHOTS_PER_PROFILE),
         ])
         .filter(([, snapshots]) => (snapshots as AuditSnapshot[]).length > 0),
     ) as AuditHistory;
@@ -204,7 +251,8 @@ export function listRecentAuditProfiles(history: AuditHistory): RecentAuditProfi
   return Object.values(history)
     .flatMap((snapshots) => {
       const completeSnapshots = snapshots
-        .filter((snapshot) => validSnapshot(snapshot) && snapshot.complete)
+        .map(normalizeSnapshot)
+        .filter((snapshot): snapshot is AuditSnapshot => Boolean(snapshot?.complete))
         .sort((left, right) => Date.parse(left.capturedAt) - Date.parse(right.capturedAt));
       const latest = completeSnapshots.at(-1);
       if (!latest) return [];
@@ -213,6 +261,7 @@ export function listRecentAuditProfiles(history: AuditHistory): RecentAuditProfi
         login: latest.login,
         lastObservedAt: latest.capturedAt,
         observationCount: completeSnapshots.length,
+        followers: latest.followers,
         visibleAchievementCount: latest.visibleAchievementCount,
         mergedPullRequests: latest.mergedPullRequests,
         topRepositoryStars: latest.topRepositoryStars,
@@ -232,7 +281,7 @@ export function auditHistoryBackupFilename(exportedAt: string) {
 export function serializeAuditHistoryBackup(history: AuditHistory, exportedAt = new Date().toISOString()) {
   const backup: AuditHistoryBackup = {
     format: AUDIT_HISTORY_BACKUP_FORMAT,
-    version: 1,
+    version: 2,
     exportedAt,
     history: mergeAuditHistories({}, history),
   };
@@ -242,29 +291,25 @@ export function serializeAuditHistoryBackup(history: AuditHistory, exportedAt = 
 
 export function parseAuditHistoryBackup(serialized: string): AuditHistoryBackup | null {
   try {
-    const parsed = JSON.parse(serialized) as Partial<AuditHistoryBackup>;
+    const parsed = JSON.parse(serialized) as Record<string, unknown>;
+    const history = normalizeBackupHistory(parsed.history);
     if (
       !parsed ||
       typeof parsed !== "object" ||
       parsed.format !== AUDIT_HISTORY_BACKUP_FORMAT ||
-      parsed.version !== 1 ||
+      (parsed.version !== 1 && parsed.version !== 2) ||
       typeof parsed.exportedAt !== "string" ||
       !Number.isFinite(Date.parse(parsed.exportedAt)) ||
-      !validBackupHistory(parsed.history)
+      !history
     ) {
       return null;
     }
 
     return {
       format: AUDIT_HISTORY_BACKUP_FORMAT,
-      version: 1,
+      version: 2,
       exportedAt: parsed.exportedAt,
-      history: Object.fromEntries(
-        Object.entries(parsed.history).map(([login, snapshots]) => [
-          profileKey(login),
-          [...snapshots].sort((left, right) => Date.parse(left.capturedAt) - Date.parse(right.capturedAt)),
-        ]),
-      ),
+      history,
     };
   } catch {
     return null;
@@ -306,7 +351,8 @@ export function appendAuditSnapshot(history: AuditHistory, snapshot: AuditSnapsh
 export function mergeAuditHistories(current: AuditHistory, imported: AuditHistory): AuditHistory {
   const snapshots = [...Object.values(current), ...Object.values(imported)]
     .flat()
-    .filter((snapshot) => validSnapshot(snapshot) && snapshot.complete)
+    .map(normalizeSnapshot)
+    .filter((snapshot): snapshot is AuditSnapshot => Boolean(snapshot?.complete))
     .sort((left, right) => Date.parse(left.capturedAt) - Date.parse(right.capturedAt));
 
   return snapshots.reduce<AuditHistory>(
@@ -332,6 +378,7 @@ export function compareAuditSnapshots(current: AuditSnapshot, previous: AuditSna
     : [];
 
   return {
+    followers: delta(current.followers, previous.followers),
     visibleAchievements: delta(current.visibleAchievementCount, previous.visibleAchievementCount),
     mergedPullRequests: delta(current.mergedPullRequests, previous.mergedPullRequests),
     topRepositoryStars: delta(current.topRepositoryStars, previous.topRepositoryStars),
