@@ -10,7 +10,7 @@ combina dados da API pública com as conquistas visíveis no perfil para mostrar
 - selos históricos ou recém-lançados descobertos diretamente no perfil, mesmo quando ainda não fazem parte do catálogo interno;
 - progresso conhecido para o próximo marco;
 - pull requests públicos mesclados;
-- repositório autoral com mais estrelas;
+- repositório autoral com mais estrelas em todo o perfil, mesmo quando existem mais de 100 projetos;
 - uma próxima ação legítima, sem incentivar spam.
 
 Cada auditoria tem uma URL compartilhável no formato `/?login=octocat`. O
