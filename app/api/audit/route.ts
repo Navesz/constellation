@@ -1,5 +1,11 @@
 import { buildAchievementProgress } from "@/lib/achievements";
 import { normalizeGitHubLogin, parseVisibleAchievements } from "@/lib/github-profile";
+import {
+  GitHubRequestError,
+  fetchGitHubWithTimeout,
+  githubFailureDiagnostic,
+  githubFailureFromStatus,
+} from "@/lib/github-request";
 
 const githubHeaders = {
   Accept: "application/vnd.github+json",
@@ -31,22 +37,31 @@ type GitHubRepositorySearch = {
 };
 
 async function githubJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, { headers: githubHeaders });
-  if (!response.ok) {
-    if (response.status === 404) throw new Error("PROFILE_NOT_FOUND");
-    if (response.status === 403 || response.status === 429) throw new Error("GITHUB_RATE_LIMIT");
-    throw new Error(`GITHUB_${response.status}`);
+  const response = await fetchGitHubWithTimeout(url, { headers: githubHeaders });
+  if (!response.ok) throw githubFailureFromStatus(response.status);
+
+  try {
+    return await response.json() as T;
+  } catch (error) {
+    throw new GitHubRequestError("invalid-response", response.status, { cause: error });
   }
-  return response.json() as Promise<T>;
 }
 
 async function githubProfilePage(login: string): Promise<string> {
-  const response = await fetch(`https://github.com/${login}`, {
+  const response = await fetchGitHubWithTimeout(`https://github.com/${login}`, {
     headers: { "User-Agent": githubHeaders["User-Agent"] },
   });
 
-  if (!response.ok) throw new Error(`PROFILE_PAGE_${response.status}`);
-  return response.text();
+  if (!response.ok) throw githubFailureFromStatus(response.status);
+  try {
+    return await response.text();
+  } catch (error) {
+    throw new GitHubRequestError("invalid-response", response.status, { cause: error });
+  }
+}
+
+function warningWithDiagnostic(message: string, diagnostic: ReturnType<typeof githubFailureDiagnostic>) {
+  return `${message} Motivo: ${diagnostic.message}.`;
 }
 
 export async function GET(request: Request) {
@@ -73,16 +88,34 @@ export async function GET(request: Request) {
       repositorySearchResult.status === "fulfilled" ? repositorySearchResult.value : null;
     const mergedSearch = mergedSearchResult.status === "fulfilled" ? mergedSearchResult.value : null;
     const profilePage = profilePageResult.status === "fulfilled" ? profilePageResult.value : null;
+    const repositoryDiagnostic = repositorySearchResult.status === "rejected"
+      ? githubFailureDiagnostic(repositorySearchResult.reason)
+      : null;
+    const mergedPullRequestDiagnostic = mergedSearchResult.status === "rejected"
+      ? githubFailureDiagnostic(mergedSearchResult.reason)
+      : null;
+    const achievementDiagnostic = profilePageResult.status === "rejected"
+      ? githubFailureDiagnostic(profilePageResult.reason)
+      : null;
     const warnings: string[] = [];
 
-    if (repositorySearch === null) {
-      warnings.push("Os repositórios não responderam; estrelas e projeto principal ficaram indisponíveis.");
+    if (repositoryDiagnostic) {
+      warnings.push(warningWithDiagnostic(
+        "Os repositórios não responderam; estrelas e projeto principal ficaram indisponíveis.",
+        repositoryDiagnostic,
+      ));
     }
-    if (mergedSearch === null) {
-      warnings.push("A busca de pull requests não respondeu; esse contador ficou indisponível.");
+    if (mergedPullRequestDiagnostic) {
+      warnings.push(warningWithDiagnostic(
+        "A busca de pull requests não respondeu; esse contador ficou indisponível.",
+        mergedPullRequestDiagnostic,
+      ));
     }
-    if (profilePage === null) {
-      warnings.push("Os selos públicos não responderam; o estado das conquistas pode estar incompleto.");
+    if (achievementDiagnostic) {
+      warnings.push(warningWithDiagnostic(
+        "Os selos públicos não responderam; o estado das conquistas pode estar incompleto.",
+        achievementDiagnostic,
+      ));
     }
 
     const visibleAchievements = profilePage === null ? [] : parseVisibleAchievements(profilePage);
@@ -128,6 +161,11 @@ export async function GET(request: Request) {
           mergedPullRequests: mergedSearch === null ? "unavailable" : "available",
           repositories: repositorySearch === null ? "unavailable" : "available",
         },
+        sourceDiagnostics: {
+          achievements: achievementDiagnostic,
+          mergedPullRequests: mergedPullRequestDiagnostic,
+          repositories: repositoryDiagnostic,
+        },
         visibleAchievementCount: profilePage === null ? null : visibleAchievements.length,
         achievements,
         warnings,
@@ -142,14 +180,20 @@ export async function GET(request: Request) {
       },
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "UNKNOWN";
-    if (message === "PROFILE_NOT_FOUND") {
+    const diagnostic = githubFailureDiagnostic(error);
+    if (diagnostic.reason === "not-found") {
       return Response.json({ error: "Perfil não encontrado no GitHub." }, { status: 404 });
     }
-    if (message === "GITHUB_RATE_LIMIT") {
+    if (diagnostic.reason === "rate-limit") {
       return Response.json(
         { error: "O GitHub limitou novas consultas por alguns minutos. Tente novamente em breve." },
         { status: 429 },
+      );
+    }
+    if (diagnostic.reason === "timeout") {
+      return Response.json(
+        { error: "O GitHub demorou demais para responder. Tente novamente em instantes." },
+        { status: 504 },
       );
     }
     return Response.json({ error: "O GitHub não respondeu como esperado. Tente novamente." }, { status: 502 });

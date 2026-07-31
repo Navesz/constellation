@@ -40,6 +40,11 @@ O painel e o relatório Markdown também exibem uma trilha de evidência com o
 método, o estado e um link direto para cada consulta pública usada. Assim, uma
 leitura completa pode ser inspecionada e uma falha permanece identificável.
 
+Cada consulta ao GitHub tem um prazo de oito segundos. Fontes secundárias que
+excedem esse limite preservam uma auditoria parcial com diagnóstico de timeout,
+limite de consultas, rede, resposta inválida ou erro do GitHub. O perfil público
+continua sendo a única fonte obrigatória.
+
 Auditorias completas também formam um histórico local com até 12 estados por
 perfil e oito perfis recentes. Essa memória fica somente no navegador, não é
 incluída nos links compartilhados e pode ser apagada por perfil na interface.

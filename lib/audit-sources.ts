@@ -22,6 +22,14 @@ function countResult(value: number | null, singular: string, plural: string) {
   return `${value.toLocaleString("pt-BR")} ${value === 1 ? singular : plural}`;
 }
 
+function unavailableResult(
+  audit: AuditResponse,
+  source: "achievements" | "mergedPullRequests" | "repositories",
+) {
+  const diagnostic = audit.sourceDiagnostics?.[source];
+  return diagnostic ? `indisponível · ${diagnostic.message}` : "leitura indisponível";
+}
+
 export function buildAuditEvidenceSources(audit: AuditResponse): AuditEvidenceSource[] {
   const login = audit.profile.login;
   const encodedLogin = encodeURIComponent(login);
@@ -45,7 +53,7 @@ export function buildAuditEvidenceSources(audit: AuditResponse): AuditEvidenceSo
       status: audit.sources.achievements,
       result: audit.sources.achievements === "available"
         ? countResult(audit.visibleAchievementCount, "selo visível", "selos visíveis")
-        : "leitura indisponível",
+        : unavailableResult(audit, "achievements"),
       url: `${audit.profile.htmlUrl}?tab=achievements`,
       urlLabel: "abrir aba de conquistas",
     },
@@ -57,7 +65,7 @@ export function buildAuditEvidenceSources(audit: AuditResponse): AuditEvidenceSo
       status: audit.sources.mergedPullRequests,
       result: audit.sources.mergedPullRequests === "available"
         ? countResult(audit.metrics.mergedPullRequests, "PR mesclado", "PRs mesclados")
-        : "leitura indisponível",
+        : unavailableResult(audit, "mergedPullRequests"),
       url: githubSearchUrl("issues", {
         q: `is:pr author:${login} is:merged`,
       }),
@@ -73,7 +81,7 @@ export function buildAuditEvidenceSources(audit: AuditResponse): AuditEvidenceSo
         ? audit.metrics.topRepository
           ? `${audit.metrics.topRepository.name} · ${countResult(audit.metrics.topRepository.stars, "estrela", "estrelas")}`
           : "nenhum repositório autoral encontrado"
-        : "leitura indisponível",
+        : unavailableResult(audit, "repositories"),
       url: githubSearchUrl("repositories", {
         q: `user:${login} fork:false`,
         sort: "stars",

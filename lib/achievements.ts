@@ -31,6 +31,19 @@ export type AchievementProgress = CatalogedAchievementDefinition & {
 
 export type AuditSourceAvailability = "available" | "unavailable";
 
+export type AuditSourceFailureReason =
+  | "timeout"
+  | "rate-limit"
+  | "not-found"
+  | "upstream-error"
+  | "invalid-response"
+  | "network";
+
+export type AuditSourceDiagnostic = {
+  reason: AuditSourceFailureReason;
+  message: string;
+};
+
 export type AuditResponse = {
   profile: {
     login: string;
@@ -56,6 +69,11 @@ export type AuditResponse = {
     achievements: AuditSourceAvailability;
     mergedPullRequests: AuditSourceAvailability;
     repositories: AuditSourceAvailability;
+  };
+  sourceDiagnostics?: {
+    achievements: AuditSourceDiagnostic | null;
+    mergedPullRequests: AuditSourceDiagnostic | null;
+    repositories: AuditSourceDiagnostic | null;
   };
   visibleAchievementCount: number | null;
   achievements: AchievementProgress[];
