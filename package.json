@@ -1,7 +1,13 @@
 {
   "name": "constellation-profile-observatory",
   "version": "0.1.0",
+  "description": "Observatório honesto de perfis, conquistas e sinais públicos do GitHub.",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Navesz/constellation.git"
+  },
+  "homepage": "https://constellation-profile.leonardonavesworking.chatgpt.site",
   "engines": {
     "node": ">=22.13.0"
   },
