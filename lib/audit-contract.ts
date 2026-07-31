@@ -79,6 +79,8 @@ function achievement(value: unknown): value is AchievementProgress {
     Array.isArray(value.thresholds) &&
     value.thresholds.every((threshold) => count(threshold) && threshold > 0) &&
     (value.catalogStatus === "modeled" || value.catalogStatus === "discovered") &&
+    (value.earningStatus === "active" || value.earningStatus === "historical" || value.earningStatus === "unknown") &&
+    (value.documentationUrl === null || webUrl(value.documentationUrl)) &&
     typeof value.unlocked === "boolean" &&
     count(value.tier) &&
     nullableCount(value.current) &&

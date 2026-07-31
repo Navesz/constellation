@@ -41,28 +41,28 @@ test("server-renders the finished Constellation experience", async () => {
 test("serves the machine-readable audit schema with long-lived caching", async () => {
   const worker = await loadWorker();
   const response = await worker.fetch(
-    new Request("http://localhost/api/audit/schema"),
+    new Request("http://localhost/api/audit/schema/2"),
     environment,
     executionContext,
   );
 
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^application\/schema\+json\b/i);
-  assert.equal(response.headers.get("x-constellation-schema-version"), "1");
+  assert.equal(response.headers.get("x-constellation-schema-version"), "2");
   assert.equal(response.headers.get("access-control-allow-origin"), "*");
   assert.equal(
     response.headers.get("cache-control"),
     "public, s-maxage=86400, stale-while-revalidate=604800",
   );
   const schema = await response.json();
-  assert.equal(schema.properties.schemaVersion.const, 1);
+  assert.equal(schema.properties.schemaVersion.const, 2);
   assert.equal(schema.additionalProperties, false);
 });
 
 test("answers CORS preflight consistently for the public API routes", async () => {
   const worker = await loadWorker();
 
-  for (const path of ["/api/audit", "/api/audit/schema"]) {
+  for (const path of ["/api/audit", "/api/audit/schema", "/api/audit/schema/2"]) {
     const response = await worker.fetch(
       new Request(`http://localhost${path}`, {
         method: "OPTIONS",
@@ -167,7 +167,7 @@ test("returns an honest partial audit when secondary GitHub sources fail", async
 
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("cache-control"), "public, s-maxage=30, stale-while-revalidate=60");
-  assert.equal(response.headers.get("x-constellation-schema-version"), "1");
+  assert.equal(response.headers.get("x-constellation-schema-version"), "2");
   assert.equal(response.headers.get("access-control-allow-origin"), "*");
   assert.equal(
     response.headers.get("access-control-expose-headers"),
@@ -175,10 +175,10 @@ test("returns an honest partial audit when secondary GitHub sources fail", async
   );
   assert.equal(
     response.headers.get("link"),
-    '</api/audit/schema>; rel="describedby"; type="application/schema+json"',
+    '</api/audit/schema/2>; rel="describedby"; type="application/schema+json"',
   );
   const audit = await response.json();
-  assert.equal(audit.schemaVersion, 1);
+  assert.equal(audit.schemaVersion, 2);
   assert.deepEqual(audit.sources, {
     achievements: "unavailable",
     mergedPullRequests: "unavailable",
@@ -256,7 +256,7 @@ test("reports a required-profile rate limit without starting secondary lookups",
   assert.equal(requestCount, 1);
 });
 
-test("returns visible achievements that are not yet in the internal catalog", async (context) => {
+test("returns official context for a visible historical achievement", async (context) => {
   const originalFetch = globalThis.fetch;
   context.after(() => {
     globalThis.fetch = originalFetch;
@@ -303,9 +303,12 @@ test("returns visible achievements that are not yet in the internal catalog", as
   assert.equal(response.status, 200);
   const audit = await response.json();
   assert.equal(audit.visibleAchievementCount, 1);
-  const discovered = audit.achievements.find((item) => item.slug === "mars-2020-contributor");
-  assert.equal(discovered.catalogStatus, "discovered");
-  assert.equal(discovered.progressLabel, "selo público detectado");
+  const historical = audit.achievements.find((item) => item.slug === "mars-2020-contributor");
+  assert.equal(historical.catalogStatus, "modeled");
+  assert.equal(historical.earningStatus, "historical");
+  assert.equal(historical.nextThreshold, null);
+  assert.equal(historical.progressLabel, "reconhecimento histórico confirmado");
+  assert.match(historical.documentationUrl, /^https:\/\/docs\.github\.com\//);
 });
 
 test("selects the top repository from a star-sorted search across the full profile", async (context) => {

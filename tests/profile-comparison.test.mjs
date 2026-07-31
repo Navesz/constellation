@@ -12,6 +12,7 @@ function achievement(slug, unlocked, overrides = {}) {
     nextThreshold: unlocked ? 16 : 1,
     badgeStatus: unlocked ? "visible" : "not-visible",
     measurementKind: unlocked ? "confirmed-minimum" : "not-public",
+    earningStatus: "active",
     ...overrides,
   };
 }
@@ -101,4 +102,29 @@ test("does not format a private achievement counter as zero progress", () => {
   assert.equal(quickdraw.primary.current, null);
   assert.equal(quickdraw.primary.measurementKind, "not-public");
   assert.equal(comparisonAchievementLabel(quickdraw.primary), "Progresso não público");
+});
+
+test("does not present a historical achievement as future progress", () => {
+  const comparison = compareProfiles(
+    audit({
+      achievements: [achievement("mars-2020-contributor", false, {
+        name: "Mars 2020 Contributor",
+        current: null,
+        nextThreshold: null,
+        earningStatus: "historical",
+      })],
+    }),
+    audit({
+      achievements: [achievement("mars-2020-contributor", true, {
+        name: "Mars 2020 Contributor",
+        current: 1,
+        nextThreshold: null,
+        earningStatus: "historical",
+      })],
+    }),
+  );
+
+  const historical = comparison.achievements.find((item) => item.slug === "mars-2020-contributor");
+  assert.equal(comparisonAchievementLabel(historical.primary), "Evento histórico encerrado");
+  assert.equal(comparisonAchievementLabel(historical.secondary), "Histórica · visível");
 });

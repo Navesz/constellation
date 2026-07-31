@@ -4,7 +4,9 @@ export type VisibleAchievement = {
   tier: number;
 };
 
-export const AUDIT_SCHEMA_VERSION = 1;
+export const AUDIT_SCHEMA_VERSION = 2;
+
+export type AchievementEarningStatus = "active" | "historical" | "unknown";
 
 type AchievementDefinition = {
   name: string;
@@ -13,6 +15,8 @@ type AchievementDefinition = {
   nextAction: string;
   thresholds: number[];
   metric?: "mergedPullRequests" | "topRepositoryStars";
+  earningStatus: AchievementEarningStatus;
+  documentationUrl: string | null;
 };
 
 type CatalogedAchievementDefinition = AchievementDefinition & {
@@ -92,6 +96,8 @@ export const achievementDefinitions: AchievementDefinition[] = [
     description: "Encerrar uma issue ou um pull request em até cinco minutos.",
     nextAction: "Faça uma triagem real e encerre uma issue resolvida logo após a abertura.",
     thresholds: [1],
+    earningStatus: "active",
+    documentationUrl: null,
   },
   {
     name: "Pull Shark",
@@ -100,6 +106,8 @@ export const achievementDefinitions: AchievementDefinition[] = [
     nextAction: "Entregue uma melhoria pequena, testada e revisável por pull request.",
     thresholds: [2, 16, 128, 1024],
     metric: "mergedPullRequests",
+    earningStatus: "active",
+    documentationUrl: null,
   },
   {
     name: "Pair Extraordinaire",
@@ -107,6 +115,8 @@ export const achievementDefinitions: AchievementDefinition[] = [
     description: "Participar como coautor de commits em pull requests mesclados.",
     nextAction: "Colabore de verdade e registre coautoria somente quando houver contribuição compartilhada.",
     thresholds: [1, 10, 24, 48],
+    earningStatus: "active",
+    documentationUrl: null,
   },
   {
     name: "Galaxy Brain",
@@ -114,6 +124,8 @@ export const achievementDefinitions: AchievementDefinition[] = [
     description: "Ter respostas aceitas em perguntas do GitHub Discussions.",
     nextAction: "Responda perguntas reais com contexto, fontes e uma solução reproduzível.",
     thresholds: [2, 8, 16, 32],
+    earningStatus: "active",
+    documentationUrl: null,
   },
   {
     name: "Starstruck",
@@ -122,6 +134,8 @@ export const achievementDefinitions: AchievementDefinition[] = [
     nextAction: "Resolva um problema concreto, documente bem e compartilhe o projeto com a comunidade certa.",
     thresholds: [16, 128, 512, 4096],
     metric: "topRepositoryStars",
+    earningStatus: "active",
+    documentationUrl: null,
   },
   {
     name: "YOLO",
@@ -129,6 +143,8 @@ export const achievementDefinitions: AchievementDefinition[] = [
     description: "Mesclar um pull request sem revisão de código.",
     nextAction: "Use apenas em uma mudança segura e bem testada de um projeto sob seu controle.",
     thresholds: [1],
+    earningStatus: "active",
+    documentationUrl: null,
   },
   {
     name: "Public Sponsor",
@@ -136,6 +152,26 @@ export const achievementDefinitions: AchievementDefinition[] = [
     description: "Patrocinar publicamente um mantenedor pelo GitHub Sponsors.",
     nextAction: "Escolha conscientemente um projeto que você usa e confirme o pagamento no GitHub.",
     thresholds: [1],
+    earningStatus: "active",
+    documentationUrl: null,
+  },
+  {
+    name: "Mars 2020 Contributor",
+    slug: "mars-2020-contributor",
+    description: "Reconhece contribuições incluídas nas versões de projetos open source usadas pelo helicóptero Ingenuity na missão Mars 2020.",
+    nextAction: "Evento histórico encerrado: o selo reconhece contribuições feitas às versões qualificadas pela NASA e pelo JPL.",
+    thresholds: [1],
+    earningStatus: "historical",
+    documentationUrl: "https://docs.github.com/en/account-and-profile/reference/profile-reference#list-of-qualifying-repositories-for-mars-2020-helicopter-contributor-achievement",
+  },
+  {
+    name: "Arctic Code Vault Contributor",
+    slug: "arctic-code-vault-contributor",
+    description: "Reconhece contribuições preservadas no snapshot de 2 de fevereiro de 2020 do GitHub Archive Program.",
+    nextAction: "Evento histórico encerrado: o snapshot do Arctic Code Vault não recebe novas contribuições.",
+    thresholds: [1],
+    earningStatus: "historical",
+    documentationUrl: "https://archiveprogram.github.com/arctic-vault/",
   },
 ];
 
@@ -161,6 +197,8 @@ export function buildAchievementProgress(
           "Conquista exibida publicamente no perfil, ainda sem critérios estáveis catalogados pelo Constellation.",
         nextAction: "Abra o selo no GitHub para consultar os eventos públicos associados.",
         thresholds: [],
+        earningStatus: "unknown" as const,
+        documentationUrl: null,
         catalogStatus: "discovered" as const,
       })),
   ];
@@ -181,13 +219,15 @@ export function buildAchievementProgress(
       : achievementScanAvailable
         ? "not-visible"
         : "unavailable";
-    const nextThreshold = unlocked
-      ? definition.thresholds[tier] ?? null
-      : measuredCurrent !== undefined
-        ? definition.thresholds.find((threshold) => threshold > measuredCurrent) ?? null
-        : achievementScanAvailable
-          ? definition.thresholds[0] ?? null
-          : null;
+    const nextThreshold = definition.earningStatus === "historical"
+      ? null
+      : unlocked
+        ? definition.thresholds[tier] ?? null
+        : measuredCurrent !== undefined
+          ? definition.thresholds.find((threshold) => threshold > measuredCurrent) ?? null
+          : achievementScanAvailable
+            ? definition.thresholds[0] ?? null
+            : null;
     const currentIsMinimum =
       definition.catalogStatus === "modeled" &&
       Boolean(visible) &&
@@ -201,7 +241,13 @@ export function buildAchievementProgress(
           ? "unavailable"
         : "not-public";
     const confidenceLabel =
-      definition.catalogStatus === "discovered"
+      definition.earningStatus === "historical"
+        ? measurementKind === "unavailable"
+          ? "fonte temporariamente indisponível"
+          : unlocked
+            ? "reconhecimento histórico confirmado pelo selo"
+            : "evento encerrado; selo não visível"
+      : definition.catalogStatus === "discovered"
         ? "selo público detectado; critérios não catalogados"
         : measurementKind === "confirmed-minimum"
           ? "mínimo confirmado pelo selo"
@@ -213,7 +259,13 @@ export function buildAchievementProgress(
                 ? "desbloqueio confirmado; contador privado"
                 : "contador não é público";
     const progressLabel =
-      definition.catalogStatus === "discovered"
+      definition.earningStatus === "historical"
+        ? measurementKind === "unavailable"
+          ? "estado temporariamente indisponível"
+          : unlocked
+            ? "reconhecimento histórico confirmado"
+            : "evento histórico encerrado"
+      : definition.catalogStatus === "discovered"
         ? "selo público detectado"
         : measurementKind === "unavailable"
           ? "estado temporariamente indisponível"

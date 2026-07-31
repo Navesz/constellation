@@ -7,7 +7,8 @@ Constellation é um observatório público de perfis do GitHub. A aplicação
 combina dados da API pública com as conquistas visíveis no perfil para mostrar:
 
 - conquistas desbloqueadas e seus níveis;
-- selos históricos ou recém-lançados descobertos diretamente no perfil, mesmo quando ainda não fazem parte do catálogo interno;
+- reconhecimentos históricos Mars 2020 e Arctic Code Vault identificados como eventos encerrados, com fontes oficiais;
+- selos recém-lançados descobertos diretamente no perfil, mesmo quando ainda não fazem parte do catálogo interno;
 - progresso conhecido para o próximo marco;
 - pull requests públicos mesclados;
 - repositório autoral com mais estrelas em todo o perfil, mesmo quando existem mais de 100 projetos;
@@ -41,11 +42,13 @@ próprio arquivo registram que o histórico local não foi incluído. Essa expor
 é separada do backup JSON da memória privada do navegador.
 
 A rota `GET /api/audit?login=octocat` expõe o mesmo retrato para integrações.
-Respostas bem-sucedidas carregam `schemaVersion: 1` no corpo e o cabeçalho
-`X-Constellation-Schema-Version: 1`. O navegador valida integralmente esse
+Respostas bem-sucedidas carregam `schemaVersion: 2` no corpo e o cabeçalho
+`X-Constellation-Schema-Version: 2`. A versão 2 distingue conquistas ativas,
+históricas e ainda desconhecidas, além de publicar uma fonte oficial quando
+disponível. O navegador valida integralmente esse
 contrato antes de atualizar a interface; respostas incompletas ou de outra
 versão falham de forma legível, sem produzir contagens parciais acidentais.
-O JSON Schema Draft 2020-12 oficial fica em `GET /api/audit/schema` e também é
+O JSON Schema Draft 2020-12 oficial fica em `GET /api/audit/schema/2` e também é
 anunciado pelo cabeçalho `Link` de cada auditoria bem-sucedida.
 As duas rotas aceitam `GET` entre origens com CORS explícito e respondem a
 preflight `OPTIONS`; `Link`, `Retry-After` e a versão do esquema ficam expostos

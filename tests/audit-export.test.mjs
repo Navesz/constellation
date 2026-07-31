@@ -10,7 +10,7 @@ import {
 
 function audit(login = "octocat") {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     profile: {
       login,
       name: "The Octocat",

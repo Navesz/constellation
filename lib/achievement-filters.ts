@@ -1,6 +1,6 @@
 import { isActionableAchievement, type AchievementProgress } from "./achievements.ts";
 
-export type AchievementFilter = "all" | "visible" | "actionable" | "withoutPublicCounter";
+export type AchievementFilter = "all" | "visible" | "actionable" | "historical" | "withoutPublicCounter";
 
 export const ACHIEVEMENT_FILTER_OPTIONS: ReadonlyArray<{
   id: AchievementFilter;
@@ -9,6 +9,7 @@ export const ACHIEVEMENT_FILTER_OPTIONS: ReadonlyArray<{
   { id: "all", label: "Todas" },
   { id: "visible", label: "Visíveis" },
   { id: "actionable", label: "Próximo marco" },
+  { id: "historical", label: "Históricas" },
   { id: "withoutPublicCounter", label: "Sem contador público" },
 ];
 
@@ -26,6 +27,9 @@ export function filterAchievements(
 ) {
   if (filter === "visible") return achievements.filter((achievement) => achievement.unlocked);
   if (filter === "actionable") return achievements.filter(isActionableAchievement);
+  if (filter === "historical") {
+    return achievements.filter((achievement) => achievement.earningStatus === "historical");
+  }
   if (filter === "withoutPublicCounter") return achievements.filter(hasNoPublicCounter);
   return achievements;
 }
@@ -35,6 +39,7 @@ export function countAchievementFilters(achievements: AchievementProgress[]): Re
     all: achievements.length,
     visible: achievements.filter((achievement) => achievement.unlocked).length,
     actionable: achievements.filter(isActionableAchievement).length,
+    historical: achievements.filter((achievement) => achievement.earningStatus === "historical").length,
     withoutPublicCounter: achievements.filter(hasNoPublicCounter).length,
   };
 }
