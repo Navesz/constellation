@@ -278,6 +278,61 @@ export function auditHistoryBackupFilename(exportedAt: string) {
   return `constellation-history-${date}.json`;
 }
 
+export function auditTimelineCsvFilename(login: string, exportedAt: string) {
+  const safeLogin = login.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || "perfil";
+  const parsedDate = new Date(exportedAt);
+  const date = Number.isNaN(parsedDate.getTime()) ? "export" : parsedDate.toISOString().slice(0, 10);
+  return `constellation-timeline-${safeLogin}-${date}.csv`;
+}
+
+function csvCell(value: string | number | null) {
+  if (value === null) return "";
+  const text = String(value);
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+export function serializeAuditTimelineCsv(timeline: AuditTimelineEntry[]) {
+  const header = [
+    "captured_at",
+    "login",
+    "followers",
+    "visible_achievements",
+    "merged_pull_requests",
+    "top_repository_stars",
+    "public_repositories",
+    "unlocked_achievements",
+    "followers_change",
+    "visible_achievements_change",
+    "merged_pull_requests_change",
+    "top_repository_stars_change",
+    "public_repositories_change",
+    "newly_unlocked_achievements",
+  ];
+  const entries = [...timeline].sort(
+    (left, right) => Date.parse(left.snapshot.capturedAt) - Date.parse(right.snapshot.capturedAt),
+  );
+  const rows = entries.map(({ snapshot, changes }) => [
+    snapshot.capturedAt,
+    snapshot.login,
+    snapshot.followers,
+    snapshot.visibleAchievementCount,
+    snapshot.mergedPullRequests,
+    snapshot.topRepositoryStars,
+    snapshot.publicRepositories,
+    snapshot.unlockedAchievementSlugs?.join("|") ?? "",
+    changes?.followers ?? null,
+    changes?.visibleAchievements ?? null,
+    changes?.mergedPullRequests ?? null,
+    changes?.topRepositoryStars ?? null,
+    changes?.publicRepositories ?? null,
+    changes?.newlyUnlockedSlugs.join("|") ?? "",
+  ]);
+
+  return `\uFEFF${[header, ...rows]
+    .map((row) => row.map(csvCell).join(","))
+    .join("\r\n")}\r\n`;
+}
+
 export function serializeAuditHistoryBackup(history: AuditHistory, exportedAt = new Date().toISOString()) {
   const backup: AuditHistoryBackup = {
     format: AUDIT_HISTORY_BACKUP_FORMAT,

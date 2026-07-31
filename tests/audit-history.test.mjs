@@ -5,6 +5,7 @@ import {
   MAX_TRACKED_PROFILES,
   appendAuditSnapshot,
   auditHistoryBackupFilename,
+  auditTimelineCsvFilename,
   buildAuditTimeline,
   compareAuditSnapshots,
   countAuditHistorySnapshots,
@@ -17,6 +18,7 @@ import {
   removeProfileHistory,
   serializeAuditHistory,
   serializeAuditHistoryBackup,
+  serializeAuditTimelineCsv,
 } from "../lib/audit-history.ts";
 
 function audit(overrides = {}) {
@@ -163,6 +165,47 @@ test("builds a newest-first timeline from complete snapshots in chronological or
     newlyUnlockedSlugs: [],
   });
   assert.equal(timeline[2].changes, null);
+});
+
+test("exports a chronological spreadsheet timeline with values and deltas", () => {
+  const baseline = createAuditSnapshot(audit());
+  const latest = createAuditSnapshot(audit({
+    profile: { login: "octocat", followers: 18_410, publicRepos: 9 },
+    metrics: { mergedPullRequests: 15, topRepository: { stars: 8 } },
+    visibleAchievementCount: 3,
+    achievements: [
+      { slug: "quickdraw", unlocked: true },
+      { slug: "pull-shark", unlocked: true },
+      { slug: "starstruck", unlocked: true },
+    ],
+    generatedAt: "2026-08-03T00:00:00.000Z",
+  }));
+  const timeline = buildAuditTimeline({ octocat: [latest, baseline] }, "octocat");
+  const csv = serializeAuditTimelineCsv(timeline);
+  const lines = csv.slice(1).trimEnd().split("\r\n");
+
+  assert.equal(csv.startsWith("\uFEFFcaptured_at,login,followers"), true);
+  assert.equal(lines.length, 3);
+  assert.equal(
+    lines[0],
+    "captured_at,login,followers,visible_achievements,merged_pull_requests,top_repository_stars,public_repositories,unlocked_achievements,followers_change,visible_achievements_change,merged_pull_requests_change,top_repository_stars_change,public_repositories_change,newly_unlocked_achievements",
+  );
+  assert.equal(
+    lines[1],
+    "2026-07-31T00:00:00.000Z,octocat,18400,2,12,7,8,quickdraw|pull-shark,,,,,,",
+  );
+  assert.equal(
+    lines[2],
+    "2026-08-03T00:00:00.000Z,octocat,18410,3,15,8,9,quickdraw|pull-shark|starstruck,10,1,3,1,1,starstruck",
+  );
+  assert.equal(
+    auditTimelineCsvFilename("OctoCat", "2026-08-04T10:20:30.000Z"),
+    "constellation-timeline-octocat-2026-08-04.csv",
+  );
+  assert.equal(
+    auditTimelineCsvFilename("***", "invalid"),
+    "constellation-timeline-perfil-export.csv",
+  );
 });
 
 test("deduplicates unchanged signals and caps profile history", () => {
