@@ -100,6 +100,39 @@ test("rejects an invalid GitHub login before making an external request", async 
   });
 });
 
+test("rejects unbounded cache keys before making an external request", async (context) => {
+  const originalFetch = globalThis.fetch;
+  let externalRequestCount = 0;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  globalThis.fetch = async () => {
+    externalRequestCount += 1;
+    return new Response("Unexpected request", { status: 500 });
+  };
+
+  const worker = await loadWorker();
+  const rejectedUrls = [
+    "http://localhost/api/audit?login=octocat&refresh=invalid/token",
+    "http://localhost/api/audit?login=octocat&nonce=random",
+    "http://localhost/api/audit?login=octocat&login=hubot",
+  ];
+
+  for (const url of rejectedUrls) {
+    const response = await worker.fetch(
+      new Request(url),
+      environment,
+      executionContext,
+    );
+
+    assert.equal(response.status, 400);
+    assert.equal(response.headers.get("access-control-allow-origin"), "*");
+  }
+
+  assert.equal(externalRequestCount, 0);
+});
+
 test("returns an honest partial audit when secondary GitHub sources fail", async (context) => {
   const originalFetch = globalThis.fetch;
   context.after(() => {

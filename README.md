@@ -21,10 +21,13 @@ Cada auditoria tem uma URL compartilhável no formato `/?login=octocat`. O
 painel também separa contagens medidas pela API de mínimos confirmados pelo
 nível do selo, para não apresentar estimativas como valores exatos.
 
-Uma leitura pode ser atualizada explicitamente sem depender da janela do cache
-compartilhado. Enquanto a nova consulta acontece, o último resultado permanece
-visível; se o GitHub falhar, a interface preserva essa leitura e identifica a
-falha. A atualização da comparação segue o mesmo contrato.
+Uma leitura pode ser atualizada explicitamente em janelas de 15 segundos. Cada
+janela recebe uma chave curta compartilhável pelo cache, com uma margem de relógio
+limitada a cinco minutos; o servidor rejeita chaves expiradas, parâmetros extras
+e valores repetidos antes de consultar o GitHub. Enquanto a nova consulta
+acontece, o último resultado permanece visível; se o GitHub falhar, a interface
+preserva essa leitura e identifica a falha. A atualização da comparação segue o
+mesmo contrato.
 
 O mesmo retrato pode ser baixado como um relatório Markdown portátil, incluindo
 fontes indisponíveis e a comparação carregada. O arquivo nunca inclui o
