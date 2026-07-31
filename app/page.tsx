@@ -49,6 +49,7 @@ import {
   createAuditRefreshToken,
 } from "@/lib/audit-request";
 import { auditReportFilename, buildAuditMarkdown } from "@/lib/audit-report";
+import { auditHtmlReportFilename, buildAuditHtml } from "@/lib/audit-html-report";
 import { buildAuditEvidenceSources } from "@/lib/audit-sources";
 import { githubAchievementDetailUrl, normalizeGitHubLogin } from "@/lib/github-profile";
 import { compareProfiles, comparisonAchievementLabel } from "@/lib/profile-comparison";
@@ -1044,6 +1045,21 @@ function Observatory() {
     );
   }
 
+  function downloadAuditHtmlReport() {
+    if (!audit) return;
+
+    const comparison = comparisonAudit ?? null;
+    downloadTextFile(
+      buildAuditHtml({
+        audit,
+        comparison,
+        shareUrl: buildShareUrl(comparison?.profile.login).toString(),
+      }),
+      "text/html;charset=utf-8",
+      auditHtmlReportFilename(audit.profile.login, comparison?.profile.login),
+    );
+  }
+
   function downloadAuditData() {
     if (!audit) return;
 
@@ -1360,6 +1376,14 @@ function Observatory() {
                   disabled={comparisonLoading}
                 >
                   {comparisonLoading ? "Preparando comparação" : "Baixar relatório .md"}
+                </button>
+                <button
+                  className="html-report-button"
+                  type="button"
+                  onClick={downloadAuditHtmlReport}
+                  disabled={comparisonLoading}
+                >
+                  {comparisonLoading ? "Preparando comparação" : "Baixar relatório .html"}
                 </button>
                 <button
                   className="data-button"
