@@ -32,6 +32,10 @@ lista de repositórios ou a leitura dos selos falhar temporariamente, a auditori
 continua com os dados disponíveis e identifica cada lacuna em vez de exibir
 zeros enganosos.
 
+O painel e o relatório Markdown também exibem uma trilha de evidência com o
+método, o estado e um link direto para cada consulta pública usada. Assim, uma
+leitura completa pode ser inspecionada e uma falha permanece identificável.
+
 Auditorias completas também formam um histórico local com até 12 estados por
 perfil e oito perfis recentes. Essa memória fica somente no navegador, não é
 incluída nos links compartilhados e pode ser apagada por perfil na interface.

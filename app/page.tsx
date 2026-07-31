@@ -28,6 +28,7 @@ import {
 } from "@/lib/audit-history";
 import { selectNextMission, type AchievementProgress, type AuditResponse } from "@/lib/achievements";
 import { auditReportFilename, buildAuditMarkdown } from "@/lib/audit-report";
+import { buildAuditEvidenceSources } from "@/lib/audit-sources";
 import { normalizeGitHubLogin } from "@/lib/github-profile";
 import { compareProfiles, comparisonAchievementLabel } from "@/lib/profile-comparison";
 
@@ -159,6 +160,67 @@ function RecentOrbits({
           );
         })}
       </ul>
+    </section>
+  );
+}
+
+function EvidenceLedger({
+  audit,
+  comparison,
+}: {
+  audit: AuditResponse;
+  comparison?: AuditResponse | null;
+}) {
+  const sources = buildAuditEvidenceSources(audit);
+  const comparisonSources = comparison ? buildAuditEvidenceSources(comparison) : [];
+
+  return (
+    <section className="evidence-ledger" aria-labelledby="evidence-ledger-title">
+      <div className="evidence-ledger-heading">
+        <div>
+          <p className="eyebrow">trilha de evidência</p>
+          <h2 id="evidence-ledger-title">Cada número deixa um rastro.</h2>
+        </div>
+        <p>Estas são as consultas públicas usadas nesta leitura. Uma fonte indisponível continua visível como lacuna, nunca como zero.</p>
+      </div>
+      <ol>
+        {sources.map((source, index) => (
+          <li className={source.status === "available" ? "is-available" : "is-unavailable"} key={source.id}>
+            <span className="evidence-index">{String(index + 1).padStart(2, "0")}</span>
+            <span className="evidence-status">
+              <i aria-hidden="true" />
+              {source.status === "available" ? "fonte lida" : "indisponível nesta leitura"}
+            </span>
+            <h3>{source.label}</h3>
+            <strong>{source.result}</strong>
+            <p><span>{source.method}</span>{source.detail}</p>
+            <a href={source.url} target="_blank" rel="noreferrer">
+              {source.urlLabel} <span aria-hidden="true">↗</span>
+            </a>
+          </li>
+        ))}
+      </ol>
+      {comparison ? (
+        <div className="comparison-evidence" aria-labelledby="comparison-evidence-title">
+          <div>
+            <p className="eyebrow">perfil comparado</p>
+            <h3 id="comparison-evidence-title">Fontes de @{comparison.profile.login}</h3>
+          </div>
+          <ul>
+            {comparisonSources.map((source) => (
+              <li key={source.id}>
+                <a href={source.url} target="_blank" rel="noreferrer">
+                  <span>{source.label}</span>
+                  <strong>{source.result}</strong>
+                  <small className={source.status === "available" ? "is-available" : "is-unavailable"}>
+                    {source.status === "available" ? "fonte lida" : "indisponível"} <span aria-hidden="true">↗</span>
+                  </small>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -1128,6 +1190,8 @@ function Observatory() {
               </a>
             ) : null}
           </section>
+
+          <EvidenceLedger audit={audit} comparison={comparisonAudit} />
 
           <p className="freshness">
             Auditoria gerada em <time dateTime={audit.generatedAt}>

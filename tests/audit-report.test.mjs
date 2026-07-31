@@ -73,6 +73,8 @@ test("builds a portable report with public signals, repository, achievements and
   assert.match(markdown, /Próximo marco: 16\./);
   assert.match(markdown, /histórico local do navegador não está incluído/);
   assert.match(markdown, /\[Abrir auditoria no Constellation\]\(https:\/\/example\.test\/\?login=octocat\)/);
+  assert.match(markdown, /## Fontes e método/);
+  assert.match(markdown, /\| Perfil público \| API pública de usuários \| disponível \|/);
 });
 
 test("preserves unavailable and private progress instead of inventing zeroes", () => {
@@ -131,6 +133,8 @@ test("includes an honest comparison and omits deltas for unavailable signals", (
   assert.match(markdown, /Conquistas visíveis em comum: \*\*1\*\*/);
   assert.match(markdown, /Exclusivas de @hubot: \*\*1\*\*/);
   assert.match(markdown, /Comparação @hubot: A busca de PRs falhou\./);
+  assert.match(markdown, /### Fontes de @hubot/);
+  assert.match(markdown, /\| PRs mesclados \| Busca pública de issues e pull requests \| indisponível \|/);
 });
 
 test("creates stable, sanitized report filenames", () => {
