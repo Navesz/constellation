@@ -50,6 +50,9 @@ próprio arquivo registram que o histórico local não foi incluído. Essa expor
 é separada do backup JSON da memória privada do navegador. Cada arquivo informa
 seu JSON Schema em `$schema`; o contrato atual fica em `GET /api/export/schema/2`,
 e o contrato legado da versão 1 permanece disponível em `GET /api/export/schema/1`.
+O guia em `GET /docs` também oferece um verificador de arquivos que roda somente
+no navegador, aceita os dois formatos e rejeita backups ou envelopes com dados
+inesperados sem fazer upload nem consultar o GitHub.
 
 A rota `GET /api/audit?login=octocat` expõe o mesmo retrato para integrações.
 Respostas bem-sucedidas carregam `schemaVersion: 2` no corpo e o cabeçalho

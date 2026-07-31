@@ -9,6 +9,7 @@ import {
 } from "@/lib/openapi";
 import { AUDIT_SCHEMA_PATH } from "@/lib/audit-schema";
 import { AUDIT_EXPORT_SCHEMA_PATH, AUDIT_EXPORT_VERSION } from "@/lib/audit-export";
+import { ExportValidator } from "./export-validator";
 
 export const metadata: Metadata = {
   title: "Guia da API — Constellation",
@@ -152,10 +153,12 @@ export default function ApiDocsPage() {
           <pre aria-label="Exemplo de integração no navegador"><code>{browserExample}</code></pre>
         </section>
 
+        <ExportValidator />
+
         <section className="docs-section" aria-labelledby="responses-title">
           <div className="docs-section-heading">
             <div>
-              <p className="eyebrow">04 · respostas</p>
+              <p className="eyebrow">05 · respostas</p>
               <h2 id="responses-title">Falhas acionáveis, não mensagens opacas.</h2>
             </div>
             <p>Erros usam um campo <code>error</code> legível; limites podem incluir <code>retryAt</code>.</p>
@@ -174,7 +177,7 @@ export default function ApiDocsPage() {
 
         <section className="docs-section docs-quickstart" aria-labelledby="status-title">
           <div>
-            <p className="eyebrow">05 · monitoramento</p>
+            <p className="eyebrow">06 · monitoramento</p>
             <h2 id="status-title">Saúde sem gastar uma consulta externa.</h2>
             <p>
               <code>{STATUS_PATH}</code> confirma que a camada da aplicação está respondendo e usa
@@ -187,7 +190,7 @@ export default function ApiDocsPage() {
 
         <section className="docs-principles" aria-labelledby="principles-title">
           <div>
-            <p className="eyebrow">06 · limites honestos</p>
+            <p className="eyebrow">07 · limites honestos</p>
             <h2 id="principles-title">O que uma integração deve preservar.</h2>
           </div>
           <ul>

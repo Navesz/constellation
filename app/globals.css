@@ -6,10 +6,13 @@
   --paper: #f3efe5;
   --paper-bright: #fffaf0;
   --line: rgba(16, 24, 32, 0.18);
+  --line-strong: rgba(16, 24, 32, 0.42);
   --muted: #6f746f;
   --signal: #ff5c35;
   --signal-dark: #cb3b1b;
   --acid: #d7f45b;
+  --acid-dark: #637619;
+  --acid-strong: #9fba2e;
   --night: #15222d;
   --mono: var(--font-geist-mono), "SFMono-Regular", Consolas, monospace;
 }
@@ -2174,6 +2177,152 @@ footer {
   color: var(--paper-bright);
 }
 
+.docs-export-validator {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(360px, 1.18fr);
+  gap: clamp(36px, 7vw, 96px);
+  align-items: start;
+}
+
+.docs-export-validator-copy code {
+  font-family: var(--mono);
+  font-size: 0.82em;
+}
+
+.docs-export-privacy {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 0.88rem;
+}
+
+.docs-export-privacy strong {
+  color: var(--ink);
+}
+
+.docs-export-validator-tool {
+  border: 1px solid var(--ink);
+  background: var(--paper-bright);
+  box-shadow: 10px 10px 0 var(--acid);
+}
+
+.docs-export-validator-tool > label {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 18px;
+  align-items: center;
+  min-height: 92px;
+  padding: 22px 26px;
+  background: var(--ink);
+  color: var(--paper-bright);
+  cursor: pointer;
+}
+
+.docs-export-validator-tool > label:hover,
+.docs-export-validator-tool > label:focus-within {
+  background: var(--night);
+  outline: 3px solid var(--acid);
+  outline-offset: -3px;
+}
+
+.docs-export-validator-tool > label.is-reading {
+  cursor: wait;
+  opacity: 0.76;
+}
+
+.docs-export-validator-tool > label input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.docs-export-validator-tool > label span {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.docs-export-validator-tool > label small {
+  color: rgba(255, 250, 240, 0.68);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+}
+
+.docs-export-validator-empty,
+.docs-export-validator-result {
+  min-height: 230px;
+  margin: 0;
+  padding: 30px 26px;
+}
+
+.docs-export-validator-empty {
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.docs-export-validator-result > span {
+  display: inline-block;
+  margin-bottom: 18px;
+  padding: 5px 8px;
+  background: var(--acid);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.docs-export-validator-result.is-error > span {
+  background: var(--signal);
+}
+
+.docs-export-validator-result h3 {
+  margin: 0 0 10px;
+  font-size: clamp(1.5rem, 3vw, 2.5rem);
+  letter-spacing: -0.04em;
+}
+
+.docs-export-validator-result dl {
+  margin: 24px 0;
+  border-top: 1px solid var(--line);
+}
+
+.docs-export-validator-result dl div {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.docs-export-validator-result dt {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.63rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.docs-export-validator-result dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.82rem;
+}
+
+.docs-export-validator-result > a {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 .docs-response-table-wrap {
   overflow-x: auto;
   border: 1px solid var(--ink);
@@ -2285,6 +2434,7 @@ footer {
   .docs-hero,
   .docs-quickstart,
   .docs-contracts,
+  .docs-export-validator,
   .docs-section-heading,
   .docs-principles,
   .profile-strip,

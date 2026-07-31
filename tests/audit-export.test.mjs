@@ -4,8 +4,11 @@ import {
   AUDIT_EXPORT_FORMAT,
   AUDIT_EXPORT_SCHEMA_URL,
   AUDIT_EXPORT_VERSION,
+  INVALID_AUDIT_EXPORT_MESSAGE,
   auditDataFilename,
   buildAuditDataExport,
+  parseAuditDataExport,
+  readAuditDataExport,
   serializeAuditDataExport,
 } from "../lib/audit-export.ts";
 
@@ -90,4 +93,63 @@ test("preserves comparison, source diagnostics and null measurements", () => {
 test("creates stable, sanitized JSON filenames", () => {
   assert.equal(auditDataFilename("Octo_Cat", "Hub Bot"), "constellation-octo-cat-vs-hub-bot.json");
   assert.equal(auditDataFilename("***"), "constellation-perfil.json");
+});
+
+test("reads and normalizes self-describing version 2 exports", () => {
+  const primary = audit();
+  const comparison = audit("hubot");
+  const exported = buildAuditDataExport({
+    audit: primary,
+    comparison,
+    shareUrl: "https://example.test/?login=octocat&compare=hubot",
+    exportedAt: "2026-07-31T13:00:00.000Z",
+  });
+  const parsed = parseAuditDataExport(exported);
+
+  assert.equal(parsed?.sourceVersion, 2);
+  assert.deepEqual(parsed?.data, exported);
+  assert.deepEqual(
+    readAuditDataExport(`\uFEFF${JSON.stringify(exported)}`),
+    parsed,
+  );
+});
+
+test("reads legacy version 1 files and normalizes them to the current contract", () => {
+  const current = buildAuditDataExport({
+    audit: audit(),
+    shareUrl: "https://example.test/?login=octocat",
+    exportedAt: "2026-07-31T13:00:00.000Z",
+  });
+  const legacy = { ...current, version: 1 };
+  Reflect.deleteProperty(legacy, "$schema");
+  const parsed = parseAuditDataExport(legacy);
+
+  assert.equal(parsed?.sourceVersion, 1);
+  assert.equal(parsed?.data.version, AUDIT_EXPORT_VERSION);
+  assert.equal(parsed?.data.$schema, AUDIT_EXPORT_SCHEMA_URL);
+  assert.deepEqual(parsed?.data.primary, current.primary);
+});
+
+test("rejects malformed, private or extended export envelopes", () => {
+  const current = buildAuditDataExport({
+    audit: audit(),
+    shareUrl: "https://example.test/?login=octocat",
+    exportedAt: "2026-07-31T13:00:00.000Z",
+  });
+
+  assert.equal(parseAuditDataExport({ ...current, history: [] }), null);
+  assert.equal(parseAuditDataExport({ ...current, $schema: "https://example.test/schema" }), null);
+  assert.equal(parseAuditDataExport({ ...current, shareUrl: "javascript:alert(1)" }), null);
+  assert.equal(parseAuditDataExport({
+    ...current,
+    privacy: { publicDataOnly: true, includesLocalHistory: true },
+  }), null);
+  assert.equal(parseAuditDataExport({
+    ...current,
+    primary: { ...current.primary, privateEmail: "hidden@example.test" },
+  }), null);
+  assert.throws(
+    () => readAuditDataExport("{not-json"),
+    new Error(INVALID_AUDIT_EXPORT_MESSAGE),
+  );
 });

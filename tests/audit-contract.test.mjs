@@ -103,6 +103,33 @@ test("rejects incompatible versions and malformed nested values", () => {
   }), false);
 });
 
+test("keeps runtime validation aligned with schemas that reject unknown fields", () => {
+  const payload = audit();
+
+  assert.equal(isAuditResponse({ ...payload, history: [] }), false);
+  assert.equal(isAuditResponse({
+    ...payload,
+    profile: { ...payload.profile, privateEmail: "hidden@example.test" },
+  }), false);
+  assert.equal(isAuditResponse({
+    ...payload,
+    metrics: {
+      ...payload.metrics,
+      topRepository: { ...payload.metrics.topRepository, private: true },
+    },
+  }), false);
+  assert.equal(isAuditResponse({
+    ...payload,
+    achievements: [{ ...payload.achievements[0], inventedCounter: 99 }],
+  }), false);
+  assert.equal(isAuditResponse({
+    ...payload,
+    achievements: [{ ...payload.achievements[0], metric: "privateCounter" }],
+  }), false);
+  assert.equal(isAuditResponse({ ...payload, generatedAt: "2026" }), false);
+  assert.equal(isAuditResponse({ ...payload, warnings: Array(51).fill("too many") }), false);
+});
+
 test("uses a validated API error and falls back for malformed error bodies", async () => {
   assert.deepEqual(parseAuditErrorResponse({
     error: "Tente novamente mais tarde.",
