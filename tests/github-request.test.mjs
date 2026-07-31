@@ -8,6 +8,7 @@ import {
   githubFailureFromResponse,
   githubFailureFromStatus,
   githubRateLimitRetryAt,
+  githubRetryAfterHeader,
 } from "../lib/github-request.ts";
 
 test("aborts a GitHub request when its deadline expires", async () => {
@@ -75,6 +76,11 @@ test("derives an exact retry time from rate-limit response headers", () => {
     "2026-07-31T13:00:00.000Z",
   );
   assert.equal(formatGitHubRetryAt("not-a-date"), null);
+  assert.equal(
+    githubRetryAfterHeader("2026-07-31T12:02:00.000Z"),
+    "Fri, 31 Jul 2026 12:02:00 GMT",
+  );
+  assert.equal(githubRetryAfterHeader("not-a-date"), null);
 });
 
 test("propagates retry guidance only for rate-limit responses", () => {

@@ -79,6 +79,12 @@ export function formatGitHubRetryAt(value: string) {
   return date.toISOString().replace("T", " ").replace(/\.\d{3}Z$/, " UTC");
 }
 
+export function githubRetryAfterHeader(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toUTCString();
+}
+
 export function githubFailureDiagnostic(error: unknown) {
   const reason = error instanceof GitHubRequestError ? error.reason : "network";
   const messages: Record<GitHubFailureReason, string> = {

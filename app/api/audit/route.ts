@@ -11,7 +11,9 @@ import {
   formatGitHubRetryAt,
   githubFailureDiagnostic,
   githubFailureFromResponse,
+  githubRetryAfterHeader,
 } from "@/lib/github-request";
+import { publicApiHeaders, publicApiOptionsResponse } from "@/lib/public-api";
 
 const githubHeaders = {
   Accept: "application/vnd.github+json",
@@ -71,11 +73,23 @@ function warningWithDiagnostic(message: string, diagnostic: ReturnType<typeof gi
   return `${message} Motivo: ${diagnostic.message}.${retryLabel ? ` Tente novamente após ${retryLabel}.` : ""}`;
 }
 
+function auditError(
+  body: { error: string; retryAt?: string },
+  status: number,
+  headers?: HeadersInit,
+) {
+  return Response.json(body, { status, headers: publicApiHeaders(headers) });
+}
+
+export function OPTIONS() {
+  return publicApiOptionsResponse();
+}
+
 export async function GET(request: Request) {
   const login = normalizeGitHubLogin(new URL(request.url).searchParams.get("login"));
 
   if (!login) {
-    return Response.json({ error: "Informe um usuário válido do GitHub." }, { status: 400 });
+    return auditError({ error: "Informe um usuário válido do GitHub." }, 400);
   }
 
   try {
@@ -182,38 +196,42 @@ export async function GET(request: Request) {
     return Response.json(
       audit,
       {
-        headers: {
+        headers: publicApiHeaders({
           "X-Constellation-Schema-Version": String(AUDIT_SCHEMA_VERSION),
           Link: AUDIT_SCHEMA_LINK_HEADER,
           "Cache-Control": warnings.length
             ? "public, s-maxage=30, stale-while-revalidate=60"
             : "public, s-maxage=300, stale-while-revalidate=600",
-        },
+        }),
       },
     );
   } catch (error) {
     const diagnostic = githubFailureDiagnostic(error);
     if (diagnostic.reason === "not-found") {
-      return Response.json({ error: "Perfil não encontrado no GitHub." }, { status: 404 });
+      return auditError({ error: "Perfil não encontrado no GitHub." }, 404);
     }
     if (diagnostic.reason === "rate-limit") {
       const retryLabel = "retryAt" in diagnostic ? formatGitHubRetryAt(diagnostic.retryAt) : null;
-      return Response.json(
+      const retryAfter = "retryAt" in diagnostic
+        ? githubRetryAfterHeader(diagnostic.retryAt)
+        : null;
+      return auditError(
         {
           error: retryLabel
             ? `O GitHub limitou novas consultas. Tente novamente após ${retryLabel}.`
             : "O GitHub limitou novas consultas por alguns minutos. Tente novamente em breve.",
           ...("retryAt" in diagnostic ? { retryAt: diagnostic.retryAt } : {}),
         },
-        { status: 429 },
+        429,
+        retryAfter ? { "Retry-After": retryAfter } : undefined,
       );
     }
     if (diagnostic.reason === "timeout") {
-      return Response.json(
+      return auditError(
         { error: "O GitHub demorou demais para responder. Tente novamente em instantes." },
-        { status: 504 },
+        504,
       );
     }
-    return Response.json({ error: "O GitHub não respondeu como esperado. Tente novamente." }, { status: 502 });
+    return auditError({ error: "O GitHub não respondeu como esperado. Tente novamente." }, 502);
   }
 }

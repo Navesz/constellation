@@ -49,6 +49,7 @@ test("serves the machine-readable audit schema with long-lived caching", async (
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^application\/schema\+json\b/i);
   assert.equal(response.headers.get("x-constellation-schema-version"), "1");
+  assert.equal(response.headers.get("access-control-allow-origin"), "*");
   assert.equal(
     response.headers.get("cache-control"),
     "public, s-maxage=86400, stale-while-revalidate=604800",
@@ -56,6 +57,32 @@ test("serves the machine-readable audit schema with long-lived caching", async (
   const schema = await response.json();
   assert.equal(schema.properties.schemaVersion.const, 1);
   assert.equal(schema.additionalProperties, false);
+});
+
+test("answers CORS preflight consistently for the public API routes", async () => {
+  const worker = await loadWorker();
+
+  for (const path of ["/api/audit", "/api/audit/schema"]) {
+    const response = await worker.fetch(
+      new Request(`http://localhost${path}`, {
+        method: "OPTIONS",
+        headers: {
+          Origin: "https://integration.example",
+          "Access-Control-Request-Method": "GET",
+        },
+      }),
+      environment,
+      executionContext,
+    );
+
+    assert.equal(response.status, 204);
+    assert.equal(response.headers.get("access-control-allow-origin"), "*");
+    assert.equal(response.headers.get("access-control-allow-methods"), "GET, OPTIONS");
+    assert.equal(response.headers.get("access-control-allow-headers"), "Accept, Content-Type");
+    assert.equal(response.headers.get("access-control-max-age"), "86400");
+    assert.equal(response.headers.get("allow"), "GET, OPTIONS");
+    assert.equal(await response.text(), "");
+  }
 });
 
 test("rejects an invalid GitHub login before making an external request", async () => {
@@ -67,6 +94,7 @@ test("rejects an invalid GitHub login before making an external request", async 
   );
 
   assert.equal(response.status, 400);
+  assert.equal(response.headers.get("access-control-allow-origin"), "*");
   assert.deepEqual(await response.json(), {
     error: "Informe um usuário válido do GitHub.",
   });
@@ -107,6 +135,11 @@ test("returns an honest partial audit when secondary GitHub sources fail", async
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("cache-control"), "public, s-maxage=30, stale-while-revalidate=60");
   assert.equal(response.headers.get("x-constellation-schema-version"), "1");
+  assert.equal(response.headers.get("access-control-allow-origin"), "*");
+  assert.equal(
+    response.headers.get("access-control-expose-headers"),
+    "Link, Retry-After, X-Constellation-Schema-Version",
+  );
   assert.equal(
     response.headers.get("link"),
     '</api/audit/schema>; rel="describedby"; type="application/schema+json"',
@@ -181,6 +214,8 @@ test("reports a required-profile rate limit without starting secondary lookups",
   );
 
   assert.equal(response.status, 429);
+  assert.equal(response.headers.get("access-control-allow-origin"), "*");
+  assert.equal(response.headers.get("retry-after"), "Sun, 01 Jan 2040 00:00:00 GMT");
   assert.deepEqual(await response.json(), {
     error: "O GitHub limitou novas consultas. Tente novamente após 2040-01-01 00:00:00 UTC.",
     retryAt: "2040-01-01T00:00:00.000Z",
