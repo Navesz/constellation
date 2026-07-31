@@ -178,6 +178,9 @@ test("server-renders a human integration guide next to the machine contracts", a
   assert.match(html, /\/api\/audit\?login=octocat/);
   assert.match(html, /\/api\/audit\/schema\/2/);
   assert.match(html, /\/api\/export\/schema\/2/);
+  assert.match(html, /Confirme o arquivo antes de confiar nele\./);
+  assert.match(html, /Escolher exportação \.json/);
+  assert.match(html, /Leitura local · sem upload/);
   assert.match(html, /\/api\/openapi\.json/);
   assert.match(html, /\/api\/status/);
   assert.match(html, /Saúde sem gastar uma consulta externa\./);
