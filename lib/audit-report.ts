@@ -37,6 +37,9 @@ function formatGeneratedAt(value: string) {
 
 function achievementStatus(achievement: AchievementProgress) {
   if (achievement.badgeStatus === "unavailable") return "fonte indisponível";
+  if (achievement.earningStatus === "historical") {
+    return achievement.unlocked ? "histórica · visível" : "histórica · evento encerrado";
+  }
   if (achievement.unlocked) return `visível · nível ${achievement.tier}`;
   return "não visível no perfil";
 }
@@ -47,7 +50,10 @@ function reportAchievement(achievement: AchievementProgress) {
     escapeMarkdown(achievement.progressLabel),
     escapeMarkdown(achievement.confidenceLabel),
   ];
-  return `- **${escapeMarkdown(achievement.name)}** — ${details.join(" · ")}`;
+  const documentation = achievement.documentationUrl
+    ? ` · [fonte oficial](${achievement.documentationUrl})`
+    : "";
+  return `- **${escapeMarkdown(achievement.name)}** — ${details.join(" · ")}${documentation}`;
 }
 
 function appendEvidenceTable(lines: string[], audit: AuditResponse, heading: string) {

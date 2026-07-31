@@ -1,6 +1,6 @@
 import { AUDIT_SCHEMA_VERSION } from "./achievements.ts";
 
-export const AUDIT_SCHEMA_PATH = "/api/audit/schema";
+export const AUDIT_SCHEMA_PATH = "/api/audit/schema/2";
 export const AUDIT_SCHEMA_LINK_HEADER =
   `<${AUDIT_SCHEMA_PATH}>; rel="describedby"; type="application/schema+json"`;
 
@@ -14,8 +14,8 @@ const nullableStringSchema = {
 
 export const auditResponseJsonSchema = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
-  $id: "https://constellation-profile.leonardonavesworking.chatgpt.site/api/audit/schema",
-  title: "Constellation audit response v1",
+  $id: "https://constellation-profile.leonardonavesworking.chatgpt.site/api/audit/schema/2",
+  title: "Constellation audit response v2",
   description: "A public GitHub profile audit produced by Constellation.",
   type: "object",
   additionalProperties: false,
@@ -157,6 +157,8 @@ export const auditResponseJsonSchema = {
         "nextAction",
         "thresholds",
         "catalogStatus",
+        "earningStatus",
+        "documentationUrl",
         "unlocked",
         "tier",
         "current",
@@ -182,6 +184,13 @@ export const auditResponseJsonSchema = {
           enum: ["mergedPullRequests", "topRepositoryStars"],
         },
         catalogStatus: { type: "string", enum: ["modeled", "discovered"] },
+        earningStatus: { type: "string", enum: ["active", "historical", "unknown"] },
+        documentationUrl: {
+          anyOf: [
+            { type: "string", format: "uri", pattern: "^https?://" },
+            { type: "null" },
+          ],
+        },
         unlocked: { type: "boolean" },
         tier: countSchema,
         current: nullableCountSchema,

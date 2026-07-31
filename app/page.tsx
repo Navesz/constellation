@@ -56,6 +56,8 @@ const achievementGlyphs: Record<string, string> = {
   "galaxy-brain": "✳",
   starstruck: "★",
   "public-sponsor": "♥",
+  "mars-2020-contributor": "◉",
+  "arctic-code-vault-contributor": "❄",
 };
 
 type LocalProgressMemory = {
@@ -246,6 +248,18 @@ function EvidenceLedger({
 }
 
 function ProgressBar({ achievement }: { achievement: AchievementProgress }) {
+  if (achievement.earningStatus === "historical") {
+    return (
+      <div
+        className="progress"
+        role="img"
+        aria-label={achievement.unlocked ? "Reconhecimento histórico visível" : "Evento histórico encerrado"}
+      >
+        <span style={{ width: achievement.unlocked ? "100%" : "0%" }} />
+      </div>
+    );
+  }
+
   if (achievement.catalogStatus === "discovered") {
     return (
       <div className="progress" role="img" aria-label="Selo público detectado">
@@ -313,12 +327,18 @@ function AchievementCard({ achievement }: { achievement: AchievementProgress }) 
   const statusLabel =
     achievement.badgeStatus === "unavailable"
       ? "Selo indisponível"
+      : achievement.earningStatus === "historical"
+        ? achievement.unlocked
+          ? "Histórica · reconhecida no perfil"
+          : "Histórica · evento encerrado"
       : achievement.catalogStatus === "discovered"
         ? `Detectada no perfil · nível ${achievement.tier}`
         : achievement.unlocked
           ? `Desbloqueada · nível ${achievement.tier}`
           : "Não visível no perfil";
-  const milestoneLabel = achievement.nextThreshold
+  const milestoneLabel = achievement.earningStatus === "historical"
+    ? "Evento encerrado"
+    : achievement.nextThreshold
     ? `Próximo: ${achievement.nextThreshold}`
     : achievement.catalogStatus === "discovered"
       ? "Critério não publicado"
@@ -330,7 +350,7 @@ function AchievementCard({ achievement }: { achievement: AchievementProgress }) 
 
   return (
     <article
-      className={`achievement ${achievement.unlocked ? "is-unlocked" : ""} ${achievement.badgeStatus === "unavailable" ? "is-unknown" : ""} ${achievement.catalogStatus === "discovered" ? "is-discovered" : ""}`}
+      className={`achievement ${achievement.unlocked ? "is-unlocked" : ""} ${achievement.badgeStatus === "unavailable" ? "is-unknown" : ""} ${achievement.catalogStatus === "discovered" ? "is-discovered" : ""} ${achievement.earningStatus === "historical" ? "is-historical" : ""}`}
     >
       <div className="achievement-topline">
         <span className="achievement-glyph" aria-hidden="true">
@@ -339,7 +359,17 @@ function AchievementCard({ achievement }: { achievement: AchievementProgress }) 
         <span className="eyebrow">{statusLabel}</span>
       </div>
       <h3>{achievement.name}</h3>
-      <p>{achievement.description}</p>
+      <p>
+        {achievement.description}
+        {achievement.documentationUrl ? (
+          <>
+            {" "}
+            <a href={achievement.documentationUrl} target="_blank" rel="noreferrer">
+              Fonte oficial <span aria-hidden="true">↗</span>
+            </a>
+          </>
+        ) : null}
+      </p>
       <span className={`confidence confidence-${achievement.measurementKind}`}>
         {achievement.confidenceLabel}
       </span>

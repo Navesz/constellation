@@ -10,6 +10,8 @@ function achievement(overrides = {}) {
     nextAction: "Continue colaborando em mudanças reais.",
     thresholds: [2, 16],
     catalogStatus: "modeled",
+    earningStatus: "active",
+    documentationUrl: null,
     unlocked: true,
     tier: 1,
     current: 4,
@@ -109,6 +111,28 @@ test("preserves unavailable and private progress instead of inventing zeroes", (
   assert.match(markdown, /fonte indisponível · progresso não público/);
   assert.match(markdown, /Não há uma missão comparável/);
   assert.match(markdown, /A busca de PRs \\\| falhou temporariamente\./);
+});
+
+test("identifies historical achievements and links their official context", () => {
+  const markdown = buildAuditMarkdown({
+    audit: audit({
+      achievements: [achievement({
+        name: "Mars 2020 Contributor",
+        slug: "mars-2020-contributor",
+        earningStatus: "historical",
+        documentationUrl: "https://docs.github.com/en/account-and-profile/reference/profile-reference",
+        current: 1,
+        nextThreshold: null,
+        progressLabel: "reconhecimento histórico confirmado",
+        confidenceLabel: "reconhecimento histórico confirmado pelo selo",
+      })],
+    }),
+    shareUrl: "https://example.test/?login=octocat",
+  });
+
+  assert.match(markdown, /\*\*Mars 2020 Contributor\*\* — histórica · visível/);
+  assert.match(markdown, /\[fonte oficial\]\(https:\/\/docs\.github\.com\//);
+  assert.doesNotMatch(markdown, /Próximo marco: 1\./);
 });
 
 test("includes an honest comparison and omits deltas for unavailable signals", () => {

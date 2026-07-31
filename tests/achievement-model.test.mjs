@@ -110,22 +110,47 @@ test("preserves measured progress when only the badge scan is unavailable", () =
   assert.equal(pullShark.measurementKind, "measured");
 });
 
-test("includes visible historical or newly released achievements outside the modeled catalog", () => {
+test("models official historical achievements without making them actionable", () => {
   const progress = buildAchievementProgress(
-    [{ name: "Mars 2020 Contributor", slug: "mars-2020-contributor", tier: 1 }],
+    [
+      { name: "Mars 2020 Contributor", slug: "mars-2020-contributor", tier: 1 },
+      { name: "Arctic Code Vault Contributor", slug: "arctic-code-vault-contributor", tier: 1 },
+    ],
     {},
   );
 
-  const discovered = progress.find((item) => item.slug === "mars-2020-contributor");
+  const mars = progress.find((item) => item.slug === "mars-2020-contributor");
+  const arctic = progress.find((item) => item.slug === "arctic-code-vault-contributor");
+  assert.ok(mars);
+  assert.ok(arctic);
+  assert.equal(mars.catalogStatus, "modeled");
+  assert.equal(mars.earningStatus, "historical");
+  assert.match(mars.documentationUrl, /^https:\/\/docs\.github\.com\//);
+  assert.equal(mars.unlocked, true);
+  assert.equal(mars.current, 1);
+  assert.equal(mars.nextThreshold, null);
+  assert.equal(mars.measurementKind, "confirmed-minimum");
+  assert.equal(mars.progressLabel, "reconhecimento histórico confirmado");
+  assert.equal(mars.confidenceLabel, "reconhecimento histórico confirmado pelo selo");
+  assert.equal(arctic.earningStatus, "historical");
+  assert.match(arctic.documentationUrl, /^https:\/\/archiveprogram\.github\.com\//);
+  assert.equal(selectNextMission(progress), null);
+});
+
+test("keeps newly released or unknown achievements discoverable", () => {
+  const progress = buildAchievementProgress(
+    [{ name: "Open Sourcerer", slug: "open-sourcerer", tier: 1 }],
+    {},
+  );
+
+  const discovered = progress.find((item) => item.slug === "open-sourcerer");
   assert.ok(discovered);
-  assert.equal(discovered.name, "Mars 2020 Contributor");
   assert.equal(discovered.catalogStatus, "discovered");
+  assert.equal(discovered.earningStatus, "unknown");
+  assert.equal(discovered.documentationUrl, null);
   assert.equal(discovered.unlocked, true);
-  assert.equal(discovered.tier, 1);
   assert.equal(discovered.current, null);
   assert.equal(discovered.nextThreshold, null);
   assert.equal(discovered.measurementKind, "not-public");
-  assert.equal(discovered.currentIsMinimum, false);
   assert.equal(discovered.progressLabel, "selo público detectado");
-  assert.equal(discovered.confidenceLabel, "selo público detectado; critérios não catalogados");
 });

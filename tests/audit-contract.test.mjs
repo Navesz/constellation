@@ -9,7 +9,7 @@ import {
 
 function audit(overrides = {}) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     profile: {
       login: "octocat",
       name: "The Octocat",
@@ -48,6 +48,8 @@ function audit(overrides = {}) {
       nextAction: "Continue colaborando.",
       thresholds: [2, 16],
       catalogStatus: "modeled",
+      earningStatus: "active",
+      documentationUrl: null,
       unlocked: true,
       tier: 1,
       current: 12,
@@ -64,7 +66,7 @@ function audit(overrides = {}) {
   };
 }
 
-test("accepts and reads a complete schema version 1 response", async () => {
+test("accepts and reads a complete schema version 2 response", async () => {
   const payload = audit();
 
   assert.equal(isAuditResponse(payload), true);
@@ -74,7 +76,8 @@ test("accepts and reads a complete schema version 1 response", async () => {
 test("rejects incompatible versions and malformed nested values", () => {
   const payload = audit();
 
-  assert.equal(isAuditResponse({ ...payload, schemaVersion: 2 }), false);
+  assert.equal(isAuditResponse({ ...payload, schemaVersion: 1 }), false);
+  assert.equal(isAuditResponse({ ...payload, schemaVersion: 3 }), false);
   assert.equal(isAuditResponse({
     ...payload,
     profile: { ...payload.profile, followers: -1 },
@@ -89,6 +92,14 @@ test("rejects incompatible versions and malformed nested values", () => {
   assert.equal(isAuditResponse({
     ...payload,
     achievements: [{ ...payload.achievements[0], badgeStatus: "invented" }],
+  }), false);
+  assert.equal(isAuditResponse({
+    ...payload,
+    achievements: [{ ...payload.achievements[0], earningStatus: "retired" }],
+  }), false);
+  assert.equal(isAuditResponse({
+    ...payload,
+    achievements: [{ ...payload.achievements[0], documentationUrl: "javascript:alert(1)" }],
   }), false);
 });
 
@@ -117,7 +128,7 @@ test("uses a validated API error and falls back for malformed error bodies", asy
 
 test("turns malformed success payloads into a stable user-facing failure", async () => {
   await assert.rejects(
-    readAuditApiResponse(Response.json({ schemaVersion: 1 }), "fallback"),
+    readAuditApiResponse(Response.json({ schemaVersion: 2 }), "fallback"),
     new Error(INCOMPATIBLE_AUDIT_RESPONSE_MESSAGE),
   );
   await assert.rejects(

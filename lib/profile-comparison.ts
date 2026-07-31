@@ -23,6 +23,7 @@ export type ComparisonAchievementState = {
   nextThreshold: number | null;
   badgeStatus: "visible" | "not-visible" | "unavailable";
   measurementKind: AchievementProgress["measurementKind"];
+  earningStatus: AchievementProgress["earningStatus"];
 };
 
 export type ComparisonAchievement = {
@@ -62,6 +63,7 @@ type ComparableAudit = {
     nextThreshold: number | null;
     badgeStatus: "visible" | "not-visible" | "unavailable";
     measurementKind: AchievementProgress["measurementKind"];
+    earningStatus: AchievementProgress["earningStatus"];
   }>;
 };
 
@@ -95,6 +97,7 @@ function achievementState(
         nextThreshold: achievement.nextThreshold,
         badgeStatus: achievement.badgeStatus,
         measurementKind: achievement.measurementKind,
+        earningStatus: achievement.earningStatus,
       }
     : {
         unlocked: false,
@@ -103,11 +106,15 @@ function achievementState(
         nextThreshold: null,
         badgeStatus: "unavailable",
         measurementKind: "unavailable",
+        earningStatus: "unknown",
       };
 }
 
 export function comparisonAchievementLabel(state: ComparisonAchievementState) {
   if (state.badgeStatus === "unavailable") return "Fonte indisponível";
+  if (state.earningStatus === "historical") {
+    return state.unlocked ? "Histórica · visível" : "Evento histórico encerrado";
+  }
   if (state.unlocked) return `Nível ${state.tier}`;
   if (state.measurementKind === "not-public" || state.current === null) {
     return "Progresso não público";
