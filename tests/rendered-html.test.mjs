@@ -18,6 +18,11 @@ const executionContext = {
   passThroughOnException() {},
 };
 
+const publicApiLinkHeader =
+  '</api/audit/schema/2>; rel="describedby"; type="application/schema+json", '
+  + '</api/openapi.json>; rel="service-desc"; type="application/openapi+json", '
+  + '</docs>; rel="service-doc"; type="text/html"';
+
 test("server-renders the finished Constellation experience", async () => {
   const worker = await loadWorker();
   const response = await worker.fetch(
@@ -34,6 +39,7 @@ test("server-renders the finished Constellation experience", async () => {
   assert.match(html, /Transforme sinais do GitHub em uma rota clara\./);
   assert.match(html, /observatório de perfil/);
   assert.match(html, /Somente dados públicos/);
+  assert.match(html, /href="\/docs"[^>]*>Guia da API/);
   assert.match(html, /\/og\.png/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
 });
@@ -50,6 +56,7 @@ test("serves the machine-readable audit schema with long-lived caching", async (
   assert.match(response.headers.get("content-type") ?? "", /^application\/schema\+json\b/i);
   assert.equal(response.headers.get("x-constellation-schema-version"), "2");
   assert.equal(response.headers.get("access-control-allow-origin"), "*");
+  assert.equal(response.headers.get("link"), publicApiLinkHeader);
   assert.equal(
     response.headers.get("cache-control"),
     "public, s-maxage=86400, stale-while-revalidate=604800",
@@ -70,6 +77,7 @@ test("serves the OpenAPI entry document with long-lived caching", async () => {
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^application\/openapi\+json\b/i);
   assert.equal(response.headers.get("access-control-allow-origin"), "*");
+  assert.equal(response.headers.get("link"), publicApiLinkHeader);
   assert.equal(
     response.headers.get("cache-control"),
     "public, s-maxage=86400, stale-while-revalidate=604800",
@@ -81,6 +89,27 @@ test("serves the OpenAPI entry document with long-lived caching", async () => {
     description.paths["/api/audit"].get.responses["200"].content["application/json"].schema.$ref,
     "https://constellation-profile.leonardonavesworking.chatgpt.site/api/audit/schema/2",
   );
+});
+
+test("server-renders a human integration guide next to the machine contracts", async () => {
+  const worker = await loadWorker();
+  const response = await worker.fetch(
+    new Request("http://localhost/docs", { headers: { accept: "text/html" } }),
+    environment,
+    executionContext,
+  );
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
+
+  const html = await response.text();
+  assert.match(html, /<title>Guia da API — Constellation<\/title>/i);
+  assert.match(html, /Integre o observatório sem adivinhar o contrato\./);
+  assert.match(html, /\/api\/audit\?login=octocat/);
+  assert.match(html, /\/api\/audit\/schema\/2/);
+  assert.match(html, /\/api\/openapi\.json/);
+  assert.match(html, /Retry-After/);
+  assert.match(html, /Sem spam/);
 });
 
 test("answers CORS preflight consistently for the public API routes", async () => {
@@ -124,6 +153,7 @@ test("rejects an invalid GitHub login before making an external request", async 
 
   assert.equal(response.status, 400);
   assert.equal(response.headers.get("access-control-allow-origin"), "*");
+  assert.equal(response.headers.get("link"), publicApiLinkHeader);
   assert.deepEqual(await response.json(), {
     error: "Informe um usuário válido do GitHub.",
   });
@@ -204,8 +234,7 @@ test("returns an honest partial audit when secondary GitHub sources fail", async
   );
   assert.equal(
     response.headers.get("link"),
-    '</api/audit/schema/2>; rel="describedby"; type="application/schema+json", '
-      + '</api/openapi.json>; rel="service-desc"; type="application/openapi+json"',
+    publicApiLinkHeader,
   );
   const audit = await response.json();
   assert.equal(audit.schemaVersion, 2);

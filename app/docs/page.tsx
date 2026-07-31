@@ -1,0 +1,171 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { AUDIT_SCHEMA_VERSION } from "@/lib/achievements";
+import {
+  API_DOCS_PATH,
+  OPENAPI_PATH,
+  PUBLIC_SITE_URL,
+} from "@/lib/openapi";
+import { AUDIT_SCHEMA_PATH } from "@/lib/audit-schema";
+
+export const metadata: Metadata = {
+  title: "Guia da API — Constellation",
+  description:
+    "Integre auditorias públicas de perfis do GitHub com contratos versionados e diagnósticos explícitos.",
+};
+
+const curlExample = `curl --get \\
+  --data-urlencode "login=octocat" \\
+  "http://localhost:3000/api/audit"`;
+
+const browserExample = `const response = await fetch(
+  "/api/audit?login=octocat"
+);
+
+if (!response.ok) {
+  const problem = await response.json();
+  throw new Error(problem.error);
+}
+
+const schemaVersion = response.headers.get(
+  "X-Constellation-Schema-Version"
+);
+const audit = await response.json();`;
+
+const responseStates = [
+  ["200", "Auditoria completa ou parcial", "Confira sources, sourceDiagnostics e warnings antes de usar métricas secundárias."],
+  ["400", "Consulta inválida", "Login, parâmetro repetido, chave de atualização expirada ou parâmetro desconhecido."],
+  ["404", "Perfil não encontrado", "O login não corresponde a um perfil público do GitHub."],
+  ["429", "Limite temporário", "Use Retry-After ou retryAt para decidir quando repetir a consulta."],
+  ["502", "Resposta inesperada", "O GitHub não entregou uma resposta utilizável para a fonte obrigatória."],
+  ["504", "Tempo esgotado", "A consulta obrigatória excedeu o prazo de oito segundos."],
+] as const;
+
+export default function ApiDocsPage() {
+  return (
+    <main className="docs-shell">
+      <div className="ambient ambient-one" />
+      <div className="ambient ambient-two" />
+
+      <nav className="site-nav" aria-label="Navegação da documentação">
+        <Link className="brand" href="/" aria-label="Constellation, observatório">
+          <span className="brand-mark" aria-hidden="true">✦</span>
+          <span>Constellation</span>
+        </Link>
+        <div className="nav-actions">
+          <Link className="nav-link" href="/">Abrir observatório</Link>
+          <a
+            className="nav-link nav-link-external"
+            href="https://github.com/Navesz/constellation"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Código <span aria-hidden="true">↗</span>
+          </a>
+        </div>
+      </nav>
+
+      <article className="docs-page">
+        <header className="docs-hero">
+          <div>
+            <p className="kicker"><span /> dados públicos · contrato v{AUDIT_SCHEMA_VERSION}</p>
+            <h1>Integre o observatório sem adivinhar o contrato.</h1>
+            <p>
+              Uma API somente de leitura para observar sinais públicos de perfis do GitHub.
+              Respostas parciais identificam cada lacuna; ausência de dados nunca vira zero por conveniência.
+            </p>
+          </div>
+          <dl className="docs-contract-card">
+            <div><dt>Base</dt><dd>{PUBLIC_SITE_URL}</dd></div>
+            <div><dt>Formato</dt><dd>JSON · UTF-8</dd></div>
+            <div><dt>Acesso</dt><dd>Dados públicos · site privado</dd></div>
+            <div><dt>CORS</dt><dd>GET e OPTIONS</dd></div>
+          </dl>
+        </header>
+
+        <section className="docs-section docs-quickstart" aria-labelledby="quickstart-title">
+          <div>
+            <p className="eyebrow">01 · primeira leitura</p>
+            <h2 id="quickstart-title">Comece com um login.</h2>
+            <p>
+              O perfil público é a única fonte obrigatória. Repositórios, pull requests e selos
+              podem falhar isoladamente sem transformar a auditoria inteira em erro. O exemplo
+              usa o projeto local; na implantação privada, faça a chamada na sessão autorizada.
+            </p>
+          </div>
+          <pre aria-label="Exemplo de consulta com curl"><code>{curlExample}</code></pre>
+        </section>
+
+        <section className="docs-section" aria-labelledby="routes-title">
+          <div className="docs-section-heading">
+            <div>
+              <p className="eyebrow">02 · superfície</p>
+              <h2 id="routes-title">Quatro rotas, responsabilidades explícitas.</h2>
+            </div>
+            <p>A alias sem versão do esquema continua disponível, mas integrações novas devem fixar a versão.</p>
+          </div>
+          <div className="docs-route-grid">
+            <article><span>GET</span><code>/api/audit?login=octocat</code><p>Executa a leitura pública do perfil.</p></article>
+            <article><span>GET</span><code>{AUDIT_SCHEMA_PATH}</code><p>Publica o JSON Schema Draft 2020-12 da resposta.</p></article>
+            <article><span>GET</span><code>{OPENAPI_PATH}</code><p>Descreve parâmetros, respostas e erros em OpenAPI 3.1.1.</p></article>
+            <article><span>GET</span><code>{API_DOCS_PATH}</code><p>Mantém este guia humano junto do serviço.</p></article>
+          </div>
+        </section>
+
+        <section className="docs-section docs-contracts" aria-labelledby="contracts-title">
+          <div>
+            <p className="eyebrow">03 · contratos verificáveis</p>
+            <h2 id="contracts-title">Use a máquina antes da suposição.</h2>
+            <p>
+              Toda resposta da auditoria anuncia este guia, a descrição OpenAPI e o JSON Schema no
+              cabeçalho <code>Link</code>. O cabeçalho de versão também fica exposto para navegadores.
+            </p>
+            <div className="docs-contract-links">
+              <a href={OPENAPI_PATH}>Abrir OpenAPI <span aria-hidden="true">↗</span></a>
+              <a href={AUDIT_SCHEMA_PATH}>Abrir JSON Schema <span aria-hidden="true">↗</span></a>
+            </div>
+          </div>
+          <pre aria-label="Exemplo de integração no navegador"><code>{browserExample}</code></pre>
+        </section>
+
+        <section className="docs-section" aria-labelledby="responses-title">
+          <div className="docs-section-heading">
+            <div>
+              <p className="eyebrow">04 · respostas</p>
+              <h2 id="responses-title">Falhas acionáveis, não mensagens opacas.</h2>
+            </div>
+            <p>Erros usam um campo <code>error</code> legível; limites podem incluir <code>retryAt</code>.</p>
+          </div>
+          <div className="docs-response-table-wrap">
+            <table className="docs-response-table">
+              <thead><tr><th>HTTP</th><th>Significado</th><th>Como tratar</th></tr></thead>
+              <tbody>
+                {responseStates.map(([status, meaning, action]) => (
+                  <tr key={status}><td><code>{status}</code></td><td>{meaning}</td><td>{action}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="docs-principles" aria-labelledby="principles-title">
+          <div>
+            <p className="eyebrow">05 · limites honestos</p>
+            <h2 id="principles-title">O que uma integração deve preservar.</h2>
+          </div>
+          <ul>
+            <li><strong>Dados públicos:</strong> a aplicação não pede token do GitHub nem acessa informações privadas; a hospedagem atual pode exigir a sessão do proprietário.</li>
+            <li><strong>Parcial é parcial:</strong> consulte <code>sources</code> antes de calcular ou comparar métricas.</li>
+            <li><strong>Cache consciente:</strong> a resposta pode ser compartilhada por alguns minutos; atualizações manuais usam uma chave curta e limitada.</li>
+            <li><strong>Sem spam:</strong> o catálogo orienta ações legítimas e não automatiza atividade para fabricar conquistas.</li>
+          </ul>
+        </section>
+      </article>
+
+      <footer>
+        <span>Constellation · guia da API</span>
+        <Link href="/">Voltar ao observatório</Link>
+      </footer>
+    </main>
+  );
+}

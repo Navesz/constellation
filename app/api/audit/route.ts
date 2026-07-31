@@ -82,7 +82,9 @@ function auditError(
   status: number,
   headers?: HeadersInit,
 ) {
-  return Response.json(body, { status, headers: publicApiHeaders(headers) });
+  const responseHeaders = new Headers(headers);
+  responseHeaders.set("Link", PUBLIC_API_LINK_HEADER);
+  return Response.json(body, { status, headers: publicApiHeaders(responseHeaders) });
 }
 
 export function OPTIONS() {

@@ -3,6 +3,8 @@ import test from "node:test";
 import { AUDIT_SCHEMA_VERSION } from "../lib/achievements.ts";
 import { AUDIT_SCHEMA_PATH } from "../lib/audit-schema.ts";
 import {
+  API_DOCS_LINK_HEADER,
+  API_DOCS_PATH,
   OPENAPI_LINK_HEADER,
   OPENAPI_MEDIA_TYPE,
   OPENAPI_PATH,
@@ -17,16 +19,23 @@ test("publishes a discoverable OpenAPI 3.1.1 entry document", () => {
   assert.equal(openApiDocument.jsonSchemaDialect, "https://json-schema.org/draft/2020-12/schema");
   assert.equal(openApiDocument.servers[0].url, PUBLIC_SITE_URL);
   assert.equal(OPENAPI_PATH, "/api/openapi.json");
+  assert.equal(API_DOCS_PATH, "/docs");
   assert.equal(OPENAPI_MEDIA_TYPE, "application/openapi+json");
   assert.equal(
     OPENAPI_LINK_HEADER,
     '</api/openapi.json>; rel="service-desc"; type="application/openapi+json"',
   );
   assert.equal(
+    API_DOCS_LINK_HEADER,
+    '</docs>; rel="service-doc"; type="text/html"',
+  );
+  assert.equal(
     PUBLIC_API_LINK_HEADER,
     '</api/audit/schema/2>; rel="describedby"; type="application/schema+json", '
-      + '</api/openapi.json>; rel="service-desc"; type="application/openapi+json"',
+      + '</api/openapi.json>; rel="service-desc"; type="application/openapi+json", '
+      + '</docs>; rel="service-doc"; type="text/html"',
   );
+  assert.equal(openApiDocument.externalDocs.url, `${PUBLIC_SITE_URL}${API_DOCS_PATH}`);
 });
 
 test("describes every public GET route and the versioned audit payload", () => {
