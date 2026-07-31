@@ -67,6 +67,35 @@ test("serves the machine-readable audit schema with long-lived caching", async (
   assert.equal(schema.additionalProperties, false);
 });
 
+test("serves current and legacy export schemas with explicit versions", async () => {
+  const worker = await loadWorker();
+
+  for (const [path, version, selfDescribing] of [
+    ["/api/export/schema", "2", true],
+    ["/api/export/schema/2", "2", true],
+    ["/api/export/schema/1", "1", false],
+  ]) {
+    const response = await worker.fetch(
+      new Request(`http://localhost${path}`),
+      environment,
+      executionContext,
+    );
+
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type") ?? "", /^application\/schema\+json\b/i);
+    assert.equal(response.headers.get("x-constellation-export-version"), version);
+    assert.equal(response.headers.get("access-control-allow-origin"), "*");
+    assert.equal(
+      response.headers.get("cache-control"),
+      "public, s-maxage=86400, stale-while-revalidate=604800",
+    );
+    const schema = await response.json();
+    assert.equal(schema.properties.version.const, Number(version));
+    assert.equal(schema.required.includes("$schema"), selfDescribing);
+    assert.equal(schema.additionalProperties, false);
+  }
+});
+
 test("serves the OpenAPI entry document with long-lived caching", async () => {
   const worker = await loadWorker();
   const response = await worker.fetch(
@@ -120,9 +149,11 @@ test("reports application health without contacting GitHub or caching the observ
   assert.equal(status.status, "ok");
   assert.equal(status.service, "constellation");
   assert.equal(status.auditSchemaVersion, 2);
+  assert.equal(status.auditExportVersion, 2);
   assert.deepEqual(status.dependencies, { github: "not-checked" });
   assert.deepEqual(status.contracts, {
     auditSchema: "http://localhost/api/audit/schema/2",
+    exportSchema: "http://localhost/api/export/schema/2",
     openApi: "http://localhost/api/openapi.json",
     documentation: "http://localhost/docs",
   });
@@ -146,6 +177,7 @@ test("server-renders a human integration guide next to the machine contracts", a
   assert.match(html, /Integre o observatório sem adivinhar o contrato\./);
   assert.match(html, /\/api\/audit\?login=octocat/);
   assert.match(html, /\/api\/audit\/schema\/2/);
+  assert.match(html, /\/api\/export\/schema\/2/);
   assert.match(html, /\/api\/openapi\.json/);
   assert.match(html, /\/api\/status/);
   assert.match(html, /Saúde sem gastar uma consulta externa\./);
@@ -160,6 +192,9 @@ test("answers CORS preflight consistently for the public API routes", async () =
     "/api/audit",
     "/api/audit/schema",
     "/api/audit/schema/2",
+    "/api/export/schema",
+    "/api/export/schema/1",
+    "/api/export/schema/2",
     "/api/openapi.json",
     "/api/status",
   ]) {
@@ -272,7 +307,7 @@ test("returns an honest partial audit when secondary GitHub sources fail", async
   assert.equal(response.headers.get("access-control-allow-origin"), "*");
   assert.equal(
     response.headers.get("access-control-expose-headers"),
-    "Link, Retry-After, X-Constellation-Schema-Version",
+    "Link, Retry-After, X-Constellation-Export-Version, X-Constellation-Schema-Version",
   );
   assert.equal(
     response.headers.get("link"),

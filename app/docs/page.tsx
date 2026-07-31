@@ -8,6 +8,7 @@ import {
   STATUS_PATH,
 } from "@/lib/openapi";
 import { AUDIT_SCHEMA_PATH } from "@/lib/audit-schema";
+import { AUDIT_EXPORT_SCHEMA_PATH, AUDIT_EXPORT_VERSION } from "@/lib/audit-export";
 
 export const metadata: Metadata = {
   title: "Guia da API — Constellation",
@@ -37,8 +38,15 @@ const statusExample = `{
   "status": "ok",
   "service": "constellation",
   "auditSchemaVersion": ${AUDIT_SCHEMA_VERSION},
+  "auditExportVersion": ${AUDIT_EXPORT_VERSION},
   "dependencies": {
     "github": "not-checked"
+  },
+  "contracts": {
+    "auditSchema": "https://example.test/api/audit/schema/2",
+    "exportSchema": "https://example.test/api/export/schema/${AUDIT_EXPORT_VERSION}",
+    "openApi": "https://example.test/api/openapi.json",
+    "documentation": "https://example.test/docs"
   },
   "checkedAt": "2026-07-31T12:00:00.000Z"
 }`;
@@ -111,13 +119,14 @@ export default function ApiDocsPage() {
           <div className="docs-section-heading">
             <div>
               <p className="eyebrow">02 · superfície</p>
-              <h2 id="routes-title">Cinco rotas principais, responsabilidades explícitas.</h2>
+              <h2 id="routes-title">Seis rotas principais, responsabilidades explícitas.</h2>
             </div>
             <p>A alias sem versão do esquema continua disponível, mas integrações novas devem fixar a versão.</p>
           </div>
           <div className="docs-route-grid">
             <article><span>GET</span><code>/api/audit?login=octocat</code><p>Executa a leitura pública do perfil.</p></article>
             <article><span>GET</span><code>{AUDIT_SCHEMA_PATH}</code><p>Publica o JSON Schema Draft 2020-12 da resposta.</p></article>
+            <article><span>GET</span><code>{AUDIT_EXPORT_SCHEMA_PATH}</code><p>Valida arquivos exportados sem depender da interface.</p></article>
             <article><span>GET</span><code>{OPENAPI_PATH}</code><p>Descreve parâmetros, respostas e erros em OpenAPI 3.1.1.</p></article>
             <article><span>GET</span><code>{API_DOCS_PATH}</code><p>Mantém este guia humano junto do serviço.</p></article>
             <article className="docs-route-wide"><span>GET</span><code>{STATUS_PATH}</code><p>Confirma a aplicação sem consultar o GitHub nem consumir a cota externa.</p></article>
@@ -130,11 +139,13 @@ export default function ApiDocsPage() {
             <h2 id="contracts-title">Use a máquina antes da suposição.</h2>
             <p>
               Toda resposta da auditoria anuncia este guia, a descrição OpenAPI e o JSON Schema no
-              cabeçalho <code>Link</code>. O cabeçalho de versão também fica exposto para navegadores.
+              cabeçalho <code>Link</code>. Exportações JSON carregam a URL do próprio esquema, e os
+              cabeçalhos de versão ficam expostos para navegadores.
             </p>
             <div className="docs-contract-links">
               <a href={OPENAPI_PATH}>Abrir OpenAPI <span aria-hidden="true">↗</span></a>
               <a href={AUDIT_SCHEMA_PATH}>Abrir JSON Schema <span aria-hidden="true">↗</span></a>
+              <a href={AUDIT_EXPORT_SCHEMA_PATH}>Validar exportações <span aria-hidden="true">↗</span></a>
               <a href={STATUS_PATH}>Ver status <span aria-hidden="true">↗</span></a>
             </div>
           </div>
