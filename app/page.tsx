@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChangeEvent, FormEvent, Suspense, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   AUDIT_HISTORY_STORAGE_KEY,
   MAX_SNAPSHOTS_PER_PROFILE,
@@ -34,6 +34,7 @@ import {
   type AchievementFilter,
 } from "@/lib/achievement-filters";
 import { auditDataFilename, serializeAuditDataExport } from "@/lib/audit-export";
+import { buildAuditRequestUrl, canPreserveAuditAfterRefresh } from "@/lib/audit-request";
 import { auditReportFilename, buildAuditMarkdown } from "@/lib/audit-report";
 import { buildAuditEvidenceSources } from "@/lib/audit-sources";
 import { normalizeGitHubLogin } from "@/lib/github-profile";
@@ -66,6 +67,11 @@ type ComparisonRequestState = {
   login: string;
   audit: AuditResponse | null;
   error: string;
+};
+
+type AuditRefreshRequest = {
+  login: string;
+  token: string;
 };
 
 function compactNumber(value: number) {
@@ -598,23 +604,30 @@ function Observatory() {
   const [errorLogin, setErrorLogin] = useState("");
   const [searchError, setSearchError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshRequest, setRefreshRequest] = useState<AuditRefreshRequest | null>(null);
+  const [refreshError, setRefreshError] = useState("");
   const [copied, setCopied] = useState(false);
   const [localProgress, setLocalProgress] = useState<LocalProgressMemory | null>(null);
   const [comparisonState, setComparisonState] = useState<ComparisonRequestState | null>(null);
   const [comparisonFormError, setComparisonFormError] = useState("");
-  const [comparisonRefreshKey, setComparisonRefreshKey] = useState(0);
+  const [comparisonRefreshKey, setComparisonRefreshKey] = useState("");
+  const [comparisonRefreshing, setComparisonRefreshing] = useState(false);
   const [historyBackupStatus, setHistoryBackupStatus] = useState("");
   const [recentProfiles, setRecentProfiles] = useState<RecentAuditProfile[]>([]);
   const [achievementFilter, setAchievementFilter] = useState<AchievementFilter>("all");
+  const currentAuditRef = useRef<AuditResponse | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
+    const refreshToken = refreshRequest?.login.toLowerCase() === routeLogin.toLowerCase()
+      ? refreshRequest.token
+      : null;
 
     async function loadAudit() {
       try {
-        const response = await fetch(`/api/audit?login=${encodeURIComponent(routeLogin)}`, {
+        const response = await fetch(buildAuditRequestUrl(routeLogin, refreshToken), {
           signal: controller.signal,
+          cache: refreshToken ? "no-store" : "default",
         });
         const payload = (await response.json()) as AuditResponse & { error?: string };
 
@@ -659,15 +672,30 @@ function Observatory() {
           });
         }
 
+        currentAuditRef.current = payload;
         setAudit(payload);
+        setRefreshError("");
         setError("");
         setErrorLogin("");
       } catch (caught) {
         if (caught instanceof DOMException && caught.name === "AbortError") return;
-        setAudit(null);
-        setLocalProgress(null);
-        setError(caught instanceof Error ? caught.message : "Falha inesperada na auditoria.");
-        setErrorLogin(routeLogin);
+        const message = caught instanceof Error ? caught.message : "Falha inesperada na auditoria.";
+        const previousAudit = currentAuditRef.current;
+        const canPreservePrevious = canPreserveAuditAfterRefresh(
+          previousAudit,
+          routeLogin,
+          refreshToken,
+        );
+
+        if (canPreservePrevious) {
+          setRefreshError(`${message} A leitura anterior foi preservada.`);
+        } else {
+          currentAuditRef.current = null;
+          setAudit(null);
+          setLocalProgress(null);
+          setError(message);
+          setErrorLogin(routeLogin);
+        }
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -675,7 +703,7 @@ function Observatory() {
 
     void loadAudit();
     return () => controller.abort();
-  }, [routeLogin, refreshKey]);
+  }, [routeLogin, refreshRequest]);
 
   useEffect(() => {
     if (!comparisonLogin) return;
@@ -684,8 +712,9 @@ function Observatory() {
 
     async function loadComparison() {
       try {
-        const response = await fetch(`/api/audit?login=${encodeURIComponent(activeComparisonLogin)}`, {
+        const response = await fetch(buildAuditRequestUrl(activeComparisonLogin, comparisonRefreshKey), {
           signal: controller.signal,
+          cache: comparisonRefreshKey ? "no-store" : "default",
         });
         const payload = (await response.json()) as AuditResponse & { error?: string };
 
@@ -697,11 +726,21 @@ function Observatory() {
         setComparisonState({ login: activeComparisonLogin, audit: payload, error: "" });
       } catch (caught) {
         if (caught instanceof DOMException && caught.name === "AbortError") return;
-        setComparisonState({
-          login: activeComparisonLogin,
-          audit: null,
-          error: caught instanceof Error ? caught.message : "Falha inesperada na comparação.",
+        const message = caught instanceof Error ? caught.message : "Falha inesperada na comparação.";
+        setComparisonState((current) => {
+          const canPreservePrevious = canPreserveAuditAfterRefresh(
+            current?.audit ?? null,
+            activeComparisonLogin,
+            comparisonRefreshKey,
+          );
+          return {
+            login: activeComparisonLogin,
+            audit: canPreservePrevious ? current?.audit ?? null : null,
+            error: canPreservePrevious ? `${message} A comparação anterior foi preservada.` : message,
+          };
         });
+      } finally {
+        if (!controller.signal.aborted) setComparisonRefreshing(false);
       }
     }
 
@@ -727,13 +766,24 @@ function Observatory() {
   );
   const routeIsPending = Boolean(audit && !auditIsCurrent);
   const errorIsCurrent = Boolean(error && errorLogin.toLowerCase() === routeLogin.toLowerCase());
-  const showLoading = loading || (!auditIsCurrent && !errorIsCurrent);
+  const primaryRefreshing = Boolean(loading && auditIsCurrent);
+  const showLoading = Boolean(!auditIsCurrent && (loading || !errorIsCurrent));
   const comparisonIsCurrent = Boolean(
     comparisonLogin && comparisonState?.login.toLowerCase() === comparisonLogin.toLowerCase(),
   );
   const comparisonAudit = comparisonIsCurrent ? comparisonState?.audit ?? null : null;
   const comparisonError = comparisonIsCurrent ? comparisonState?.error ?? "" : "";
-  const comparisonLoading = Boolean(comparisonLogin && !comparisonIsCurrent);
+  const comparisonLoading = Boolean(
+    comparisonLogin && (!comparisonIsCurrent || comparisonRefreshing),
+  );
+
+  function requestAuditRefresh() {
+    setLoading(true);
+    setRefreshError("");
+    setError("");
+    setErrorLogin("");
+    setRefreshRequest({ login: routeLogin, token: String(Date.now()) });
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -746,18 +796,21 @@ function Observatory() {
     }
 
     setSearchError("");
+    setCopied(false);
+
+    if (requestedLogin.toLowerCase() === routeLogin.toLowerCase()) {
+      requestAuditRefresh();
+      return;
+    }
+
+    currentAuditRef.current = null;
+    setRefreshRequest(null);
+    setRefreshError("");
     setLoading(true);
     setAudit(null);
     setLocalProgress(null);
     setError("");
     setErrorLogin("");
-    setCopied(false);
-
-    if (requestedLogin === routeLogin) {
-      setRefreshKey((current) => current + 1);
-      return;
-    }
-
     router.push(`/?login=${encodeURIComponent(requestedLogin)}`, { scroll: false });
   }
 
@@ -777,11 +830,14 @@ function Observatory() {
 
     setComparisonFormError("");
     if (comparisonLogin?.toLowerCase() === requestedLogin.toLowerCase()) {
-      setComparisonState(null);
-      setComparisonRefreshKey((current) => current + 1);
+      setComparisonState((current) => current ? { ...current, error: "" } : current);
+      setComparisonRefreshing(true);
+      setComparisonRefreshKey(String(Date.now()));
       return;
     }
 
+    setComparisonRefreshing(false);
+    setComparisonRefreshKey("");
     const params = new URLSearchParams(searchParams.toString());
     params.set("login", audit?.profile.login ?? routeLogin);
     params.set("compare", requestedLogin);
@@ -793,6 +849,8 @@ function Observatory() {
     params.set("login", audit?.profile.login ?? routeLogin);
     params.delete("compare");
     setComparisonFormError("");
+    setComparisonRefreshing(false);
+    setComparisonRefreshKey("");
     router.push(`/?${params.toString()}`, { scroll: false });
   }
 
@@ -1036,6 +1094,13 @@ function Observatory() {
             </section>
           ) : null}
 
+          {refreshError ? (
+            <section className="refresh-warning" role="status" aria-label="Falha na atualização">
+              <strong>Última leitura mantida.</strong>
+              <span>{refreshError}</span>
+            </section>
+          ) : null}
+
           <section className="profile-strip" aria-label="Resumo do perfil">
             <div className="identity">
               <Image src={audit.profile.avatarUrl} alt="" width={72} height={72} unoptimized />
@@ -1054,6 +1119,14 @@ function Observatory() {
                 <span><strong>{compactNumber(audit.profile.publicRepos)}</strong> repositórios</span>
               </div>
               <div className="profile-actions">
+                <button
+                  className="refresh-button"
+                  type="button"
+                  onClick={requestAuditRefresh}
+                  disabled={primaryRefreshing}
+                >
+                  {primaryRefreshing ? "Atualizando…" : "Atualizar agora"}
+                </button>
                 <button className="share-button" type="button" onClick={copyShareLink}>
                   {copied ? "Link copiado" : "Copiar link"}
                 </button>
