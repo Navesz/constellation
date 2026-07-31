@@ -118,7 +118,8 @@ export const achievementDefinitions: AchievementDefinition[] = [
     name: "Pair Extraordinaire",
     slug: "pair-extraordinaire",
     description: "Participar como coautor de commits em pull requests mesclados.",
-    nextAction: "Colabore de verdade e registre coautoria somente quando houver contribuição compartilhada.",
+    nextAction:
+      "Em um PR mesclado, inclua no commit: Co-authored-by: Parceiro <id+login@users.noreply.github.com> — só com contribuição real.",
     thresholds: [1, 10, 24, 48],
     earningStatus: "active",
     documentationUrl: null,

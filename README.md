@@ -164,6 +164,10 @@ npm test
 npm audit --omit=dev
 ```
 
+## Colaboradores
+
+Veja [CONTRIBUTORS.md](./CONTRIBUTORS.md).
+
 ## Limites conhecidos
 
 O GitHub não oferece uma API oficial de conquistas. Por isso, a aplicação
