@@ -7,6 +7,7 @@ Constellation é um observatório público de perfis do GitHub. A aplicação
 combina dados da API pública com as conquistas visíveis no perfil para mostrar:
 
 - conquistas desbloqueadas e seus níveis;
+- selos históricos ou recém-lançados descobertos diretamente no perfil, mesmo quando ainda não fazem parte do catálogo interno;
 - progresso conhecido para o próximo marco;
 - pull requests públicos mesclados;
 - repositório autoral com mais estrelas;
@@ -55,4 +56,5 @@ npm audit --omit=dev
 O GitHub não oferece uma API oficial de conquistas. Por isso, a aplicação
 lê somente selos exibidos publicamente. Contadores privados não são expostos;
 para conquistas sem contador público, o painel usa o menor valor confirmado
-pelo nível visível.
+pelo nível visível. Selos que o Constellation ainda não conhece também são
+exibidos, mas ficam explicitamente sem critério ou estimativa de progresso.

@@ -121,3 +121,53 @@ test("keeps the public profile lookup as the required source", async (context) =
     error: "Perfil não encontrado no GitHub.",
   });
 });
+
+test("returns visible achievements that are not yet in the internal catalog", async (context) => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  globalThis.fetch = async (input) => {
+    const url = typeof input === "string" ? input : input.url;
+
+    if (url === "https://api.github.com/users/octocat") {
+      return Response.json({
+        login: "octocat",
+        name: "The Octocat",
+        bio: null,
+        avatar_url: "https://avatars.githubusercontent.com/u/583231",
+        html_url: "https://github.com/octocat",
+        followers: 100,
+        following: 2,
+        public_repos: 8,
+      });
+    }
+    if (url.includes("/repos?")) return Response.json([]);
+    if (url.startsWith("https://api.github.com/search/issues")) {
+      return Response.json({ total_count: 0 });
+    }
+    if (url === "https://github.com/octocat") {
+      return new Response(`
+        <a href="/octocat?achievement=mars-2020-contributor&amp;tab=achievements">
+          <img alt="Achievement: Mars 2020 Contributor">
+        </a>`);
+    }
+
+    return new Response("Unexpected request", { status: 500 });
+  };
+
+  const worker = await loadWorker();
+  const response = await worker.fetch(
+    new Request("http://localhost/api/audit?login=octocat"),
+    environment,
+    executionContext,
+  );
+
+  assert.equal(response.status, 200);
+  const audit = await response.json();
+  assert.equal(audit.visibleAchievementCount, 1);
+  const discovered = audit.achievements.find((item) => item.slug === "mars-2020-contributor");
+  assert.equal(discovered.catalogStatus, "discovered");
+  assert.equal(discovered.progressLabel, "selo público detectado");
+});
