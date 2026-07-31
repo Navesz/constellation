@@ -27,6 +27,12 @@ import {
   type RecentAuditProfile,
 } from "@/lib/audit-history";
 import { selectNextMission, type AchievementProgress, type AuditResponse } from "@/lib/achievements";
+import {
+  ACHIEVEMENT_FILTER_OPTIONS,
+  countAchievementFilters,
+  filterAchievements,
+  type AchievementFilter,
+} from "@/lib/achievement-filters";
 import { auditReportFilename, buildAuditMarkdown } from "@/lib/audit-report";
 import { buildAuditEvidenceSources } from "@/lib/audit-sources";
 import { normalizeGitHubLogin } from "@/lib/github-profile";
@@ -599,6 +605,7 @@ function Observatory() {
   const [comparisonRefreshKey, setComparisonRefreshKey] = useState(0);
   const [historyBackupStatus, setHistoryBackupStatus] = useState("");
   const [recentProfiles, setRecentProfiles] = useState<RecentAuditProfile[]>([]);
+  const [achievementFilter, setAchievementFilter] = useState<AchievementFilter>("all");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -703,6 +710,14 @@ function Observatory() {
 
   const nextMission = useMemo(
     () => audit ? selectNextMission(audit.achievements) : null,
+    [audit],
+  );
+  const filteredAchievements = useMemo(
+    () => audit ? filterAchievements(audit.achievements, achievementFilter) : [],
+    [achievementFilter, audit],
+  );
+  const achievementFilterCounts = useMemo(
+    () => countAchievementFilters(audit?.achievements ?? []),
     [audit],
   );
 
@@ -1164,11 +1179,39 @@ function Observatory() {
             <span><i className="legend-unavailable" /> fonte temporariamente indisponível</span>
           </aside>
 
-          <section className="achievement-grid">
-            {audit.achievements.map((achievement) => (
-              <AchievementCard key={achievement.slug} achievement={achievement} />
-            ))}
-          </section>
+          <div className="achievement-controls">
+            <div role="group" aria-label="Filtrar mapa de conquistas">
+              {ACHIEVEMENT_FILTER_OPTIONS.map((option) => (
+                <button
+                  type="button"
+                  key={option.id}
+                  aria-controls="achievement-map"
+                  aria-pressed={achievementFilter === option.id}
+                  onClick={() => setAchievementFilter(option.id)}
+                >
+                  {option.label}
+                  <span>{achievementFilterCounts[option.id]}</span>
+                </button>
+              ))}
+            </div>
+            <p aria-live="polite">
+              {filteredAchievements.length} {filteredAchievements.length === 1 ? "conquista exibida" : "conquistas exibidas"}
+            </p>
+          </div>
+
+          {filteredAchievements.length ? (
+            <section className="achievement-grid" id="achievement-map">
+              {filteredAchievements.map((achievement) => (
+                <AchievementCard key={achievement.slug} achievement={achievement} />
+              ))}
+            </section>
+          ) : (
+            <section className="achievement-empty" id="achievement-map" role="status">
+              <strong>Nenhuma conquista corresponde a este filtro.</strong>
+              <p>Os dados continuam preservados; escolha outra leitura do mapa.</p>
+              <button type="button" onClick={() => setAchievementFilter("all")}>Mostrar todas</button>
+            </section>
+          )}
 
           <section className="repo-signal">
             <div>
