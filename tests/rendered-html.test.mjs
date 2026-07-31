@@ -92,10 +92,16 @@ test("returns an honest partial audit when secondary GitHub sources fail", async
     mergedPullRequests: "unavailable",
     repositories: "unavailable",
   });
+  assert.deepEqual(audit.sourceDiagnostics, {
+    achievements: { reason: "upstream-error", message: "GitHub respondeu com erro" },
+    mergedPullRequests: { reason: "upstream-error", message: "GitHub respondeu com erro" },
+    repositories: { reason: "upstream-error", message: "GitHub respondeu com erro" },
+  });
   assert.equal(audit.visibleAchievementCount, null);
   assert.equal(audit.metrics.mergedPullRequests, null);
   assert.equal(audit.metrics.topRepository, null);
   assert.equal(audit.warnings.length, 3);
+  assert.ok(audit.warnings.every((warning) => warning.includes("Motivo: GitHub respondeu com erro.")));
 
   const quickdraw = audit.achievements.find((item) => item.slug === "quickdraw");
   assert.equal(quickdraw.badgeStatus, "unavailable");
@@ -123,6 +129,31 @@ test("keeps the public profile lookup as the required source", async (context) =
   assert.equal(response.status, 404);
   assert.deepEqual(await response.json(), {
     error: "Perfil não encontrado no GitHub.",
+  });
+  assert.equal(requestCount, 1);
+});
+
+test("reports a required-profile rate limit without starting secondary lookups", async (context) => {
+  const originalFetch = globalThis.fetch;
+  let requestCount = 0;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+  globalThis.fetch = async () => {
+    requestCount += 1;
+    return new Response("Rate limited", { status: 429 });
+  };
+
+  const worker = await loadWorker();
+  const response = await worker.fetch(
+    new Request("http://localhost/api/audit?login=octocat"),
+    environment,
+    executionContext,
+  );
+
+  assert.equal(response.status, 429);
+  assert.deepEqual(await response.json(), {
+    error: "O GitHub limitou novas consultas por alguns minutos. Tente novamente em breve.",
   });
   assert.equal(requestCount, 1);
 });
@@ -244,6 +275,11 @@ test("selects the top repository from a star-sorted search across the full profi
     stars: 987,
     forks: 42,
     url: "https://github.com/prolific-user/older-breakout-project",
+  });
+  assert.deepEqual(audit.sourceDiagnostics, {
+    achievements: null,
+    mergedPullRequests: null,
+    repositories: null,
   });
   assert.equal(
     requestedUrls.some((url) => url.includes("/users/prolific-user/repos")),

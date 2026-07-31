@@ -61,3 +61,24 @@ test("keeps failed sources unavailable instead of describing zero results", () =
   }
   assert.doesNotMatch(sources.map((source) => source.result).join(" "), /0 (selos|PRs|estrelas)/);
 });
+
+test("surfaces the structured failure reason when the audit provides one", () => {
+  const sources = buildAuditEvidenceSources(audit({
+    metrics: { mergedPullRequests: null, topRepository: null },
+    sources: {
+      achievements: "unavailable",
+      mergedPullRequests: "unavailable",
+      repositories: "unavailable",
+    },
+    sourceDiagnostics: {
+      achievements: { reason: "timeout", message: "tempo limite de 8 segundos excedido" },
+      mergedPullRequests: { reason: "rate-limit", message: "limite temporário de consultas do GitHub" },
+      repositories: { reason: "network", message: "falha de rede ao consultar o GitHub" },
+    },
+    visibleAchievementCount: null,
+  }));
+
+  assert.equal(sources[1].result, "indisponível · tempo limite de 8 segundos excedido");
+  assert.equal(sources[2].result, "indisponível · limite temporário de consultas do GitHub");
+  assert.equal(sources[3].result, "indisponível · falha de rede ao consultar o GitHub");
+});
