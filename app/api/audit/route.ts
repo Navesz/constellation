@@ -4,6 +4,7 @@ import {
   type AuditResponse,
 } from "@/lib/achievements";
 import { normalizeGitHubLogin, parseVisibleAchievements } from "@/lib/github-profile";
+import { AUDIT_SCHEMA_LINK_HEADER } from "@/lib/audit-schema";
 import {
   GitHubRequestError,
   fetchGitHubWithTimeout,
@@ -183,6 +184,7 @@ export async function GET(request: Request) {
       {
         headers: {
           "X-Constellation-Schema-Version": String(AUDIT_SCHEMA_VERSION),
+          Link: AUDIT_SCHEMA_LINK_HEADER,
           "Cache-Control": warnings.length
             ? "public, s-maxage=30, stale-while-revalidate=60"
             : "public, s-maxage=300, stale-while-revalidate=600",

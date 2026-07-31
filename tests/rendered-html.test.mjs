@@ -38,6 +38,26 @@ test("server-renders the finished Constellation experience", async () => {
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
 });
 
+test("serves the machine-readable audit schema with long-lived caching", async () => {
+  const worker = await loadWorker();
+  const response = await worker.fetch(
+    new Request("http://localhost/api/audit/schema"),
+    environment,
+    executionContext,
+  );
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /^application\/schema\+json\b/i);
+  assert.equal(response.headers.get("x-constellation-schema-version"), "1");
+  assert.equal(
+    response.headers.get("cache-control"),
+    "public, s-maxage=86400, stale-while-revalidate=604800",
+  );
+  const schema = await response.json();
+  assert.equal(schema.properties.schemaVersion.const, 1);
+  assert.equal(schema.additionalProperties, false);
+});
+
 test("rejects an invalid GitHub login before making an external request", async () => {
   const worker = await loadWorker();
   const response = await worker.fetch(
@@ -87,6 +107,10 @@ test("returns an honest partial audit when secondary GitHub sources fail", async
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("cache-control"), "public, s-maxage=30, stale-while-revalidate=60");
   assert.equal(response.headers.get("x-constellation-schema-version"), "1");
+  assert.equal(
+    response.headers.get("link"),
+    '</api/audit/schema>; rel="describedby"; type="application/schema+json"',
+  );
   const audit = await response.json();
   assert.equal(audit.schemaVersion, 1);
   assert.deepEqual(audit.sources, {
