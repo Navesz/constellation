@@ -443,7 +443,7 @@ footer {
 
 .recent-orbit-signals {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 8px;
   margin-top: auto;
   padding-top: 20px;
@@ -1163,7 +1163,7 @@ footer {
 
 .history-table {
   width: 100%;
-  min-width: 820px;
+  min-width: 920px;
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
 }
