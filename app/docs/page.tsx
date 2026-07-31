@@ -5,6 +5,7 @@ import {
   API_DOCS_PATH,
   OPENAPI_PATH,
   PUBLIC_SITE_URL,
+  STATUS_PATH,
 } from "@/lib/openapi";
 import { AUDIT_SCHEMA_PATH } from "@/lib/audit-schema";
 
@@ -31,6 +32,16 @@ const schemaVersion = response.headers.get(
   "X-Constellation-Schema-Version"
 );
 const audit = await response.json();`;
+
+const statusExample = `{
+  "status": "ok",
+  "service": "constellation",
+  "auditSchemaVersion": ${AUDIT_SCHEMA_VERSION},
+  "dependencies": {
+    "github": "not-checked"
+  },
+  "checkedAt": "2026-07-31T12:00:00.000Z"
+}`;
 
 const responseStates = [
   ["200", "Auditoria completa ou parcial", "Confira sources, sourceDiagnostics e warnings antes de usar métricas secundárias."],
@@ -100,7 +111,7 @@ export default function ApiDocsPage() {
           <div className="docs-section-heading">
             <div>
               <p className="eyebrow">02 · superfície</p>
-              <h2 id="routes-title">Quatro rotas, responsabilidades explícitas.</h2>
+              <h2 id="routes-title">Cinco rotas principais, responsabilidades explícitas.</h2>
             </div>
             <p>A alias sem versão do esquema continua disponível, mas integrações novas devem fixar a versão.</p>
           </div>
@@ -109,6 +120,7 @@ export default function ApiDocsPage() {
             <article><span>GET</span><code>{AUDIT_SCHEMA_PATH}</code><p>Publica o JSON Schema Draft 2020-12 da resposta.</p></article>
             <article><span>GET</span><code>{OPENAPI_PATH}</code><p>Descreve parâmetros, respostas e erros em OpenAPI 3.1.1.</p></article>
             <article><span>GET</span><code>{API_DOCS_PATH}</code><p>Mantém este guia humano junto do serviço.</p></article>
+            <article className="docs-route-wide"><span>GET</span><code>{STATUS_PATH}</code><p>Confirma a aplicação sem consultar o GitHub nem consumir a cota externa.</p></article>
           </div>
         </section>
 
@@ -123,6 +135,7 @@ export default function ApiDocsPage() {
             <div className="docs-contract-links">
               <a href={OPENAPI_PATH}>Abrir OpenAPI <span aria-hidden="true">↗</span></a>
               <a href={AUDIT_SCHEMA_PATH}>Abrir JSON Schema <span aria-hidden="true">↗</span></a>
+              <a href={STATUS_PATH}>Ver status <span aria-hidden="true">↗</span></a>
             </div>
           </div>
           <pre aria-label="Exemplo de integração no navegador"><code>{browserExample}</code></pre>
@@ -148,15 +161,29 @@ export default function ApiDocsPage() {
           </div>
         </section>
 
+        <section className="docs-section docs-quickstart" aria-labelledby="status-title">
+          <div>
+            <p className="eyebrow">05 · monitoramento</p>
+            <h2 id="status-title">Saúde sem gastar uma consulta externa.</h2>
+            <p>
+              <code>{STATUS_PATH}</code> confirma que a camada da aplicação está respondendo e usa
+              <code> Cache-Control: no-store</code>. O valor <code>github: not-checked</code> deixa
+              explícito que essa leitura não mede a disponibilidade do GitHub.
+            </p>
+          </div>
+          <pre aria-label="Exemplo de resposta do status"><code>{statusExample}</code></pre>
+        </section>
+
         <section className="docs-principles" aria-labelledby="principles-title">
           <div>
-            <p className="eyebrow">05 · limites honestos</p>
+            <p className="eyebrow">06 · limites honestos</p>
             <h2 id="principles-title">O que uma integração deve preservar.</h2>
           </div>
           <ul>
             <li><strong>Dados públicos:</strong> a aplicação não pede token do GitHub nem acessa informações privadas; a hospedagem atual pode exigir a sessão do proprietário.</li>
             <li><strong>Parcial é parcial:</strong> consulte <code>sources</code> antes de calcular ou comparar métricas.</li>
             <li><strong>Cache consciente:</strong> a resposta pode ser compartilhada por alguns minutos; atualizações manuais usam uma chave curta e limitada.</li>
+            <li><strong>Monitoramento isolado:</strong> use a rota de status para disponibilidade da aplicação e a auditoria somente quando precisar consultar um perfil.</li>
             <li><strong>Sem spam:</strong> o catálogo orienta ações legítimas e não automatiza atividade para fabricar conquistas.</li>
           </ul>
         </section>

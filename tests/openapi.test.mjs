@@ -10,6 +10,8 @@ import {
   OPENAPI_PATH,
   PUBLIC_API_LINK_HEADER,
   PUBLIC_SITE_URL,
+  STATUS_LINK_HEADER,
+  STATUS_PATH,
   openApiDocument,
 } from "../lib/openapi.ts";
 
@@ -20,6 +22,7 @@ test("publishes a discoverable OpenAPI 3.1.1 entry document", () => {
   assert.equal(openApiDocument.servers[0].url, PUBLIC_SITE_URL);
   assert.equal(OPENAPI_PATH, "/api/openapi.json");
   assert.equal(API_DOCS_PATH, "/docs");
+  assert.equal(STATUS_PATH, "/api/status");
   assert.equal(OPENAPI_MEDIA_TYPE, "application/openapi+json");
   assert.equal(
     OPENAPI_LINK_HEADER,
@@ -30,10 +33,15 @@ test("publishes a discoverable OpenAPI 3.1.1 entry document", () => {
     '</docs>; rel="service-doc"; type="text/html"',
   );
   assert.equal(
+    STATUS_LINK_HEADER,
+    '</api/status>; rel="status"; type="application/json"',
+  );
+  assert.equal(
     PUBLIC_API_LINK_HEADER,
     '</api/audit/schema/2>; rel="describedby"; type="application/schema+json", '
       + '</api/openapi.json>; rel="service-desc"; type="application/openapi+json", '
-      + '</docs>; rel="service-doc"; type="text/html"',
+      + '</docs>; rel="service-doc"; type="text/html", '
+      + '</api/status>; rel="status"; type="application/json"',
   );
   assert.equal(openApiDocument.externalDocs.url, `${PUBLIC_SITE_URL}${API_DOCS_PATH}`);
 });
@@ -41,6 +49,7 @@ test("publishes a discoverable OpenAPI 3.1.1 entry document", () => {
 test("describes every public GET route and the versioned audit payload", () => {
   assert.deepEqual(Object.keys(openApiDocument.paths), [
     "/api/audit",
+    STATUS_PATH,
     "/api/audit/schema",
     AUDIT_SCHEMA_PATH,
     OPENAPI_PATH,
@@ -61,4 +70,14 @@ test("describes every public GET route and the versioned audit payload", () => {
   assert.equal(operation.responses["429"].$ref, "#/components/responses/RateLimited");
   assert.equal(openApiDocument.paths["/api/audit/schema"].get.deprecated, true);
   assert.equal(openApiDocument.components.schemas.Error.additionalProperties, false);
+  assert.equal(openApiDocument.paths[STATUS_PATH].get.operationId, "getServiceStatus");
+  assert.equal(
+    openApiDocument.paths[STATUS_PATH].get.responses["200"].content["application/json"].schema.$ref,
+    "#/components/schemas/ServiceStatus",
+  );
+  assert.equal(openApiDocument.components.schemas.ServiceStatus.properties.status.const, "ok");
+  assert.equal(
+    openApiDocument.components.schemas.ServiceStatus.properties.dependencies.properties.github.const,
+    "not-checked",
+  );
 });

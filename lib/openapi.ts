@@ -6,12 +6,15 @@ export const PUBLIC_SITE_URL =
 export const OPENAPI_PATH = "/api/openapi.json";
 export const OPENAPI_MEDIA_TYPE = "application/openapi+json";
 export const API_DOCS_PATH = "/docs";
+export const STATUS_PATH = "/api/status";
 export const OPENAPI_LINK_HEADER =
   `<${OPENAPI_PATH}>; rel="service-desc"; type="${OPENAPI_MEDIA_TYPE}"`;
 export const API_DOCS_LINK_HEADER =
   `<${API_DOCS_PATH}>; rel="service-doc"; type="text/html"`;
+export const STATUS_LINK_HEADER =
+  `<${STATUS_PATH}>; rel="status"; type="application/json"`;
 export const PUBLIC_API_LINK_HEADER =
-  `${AUDIT_SCHEMA_LINK_HEADER}, ${OPENAPI_LINK_HEADER}, ${API_DOCS_LINK_HEADER}`;
+  `${AUDIT_SCHEMA_LINK_HEADER}, ${OPENAPI_LINK_HEADER}, ${API_DOCS_LINK_HEADER}, ${STATUS_LINK_HEADER}`;
 
 const errorSchema = {
   type: "object",
@@ -64,6 +67,7 @@ export const openApiDocument = {
   tags: [
     { name: "Audit", description: "Public GitHub profile observations." },
     { name: "Contract", description: "Machine-readable API contracts." },
+    { name: "Operational", description: "Checks that do not contact GitHub." },
   ],
   paths: {
     "/api/audit": {
@@ -108,7 +112,7 @@ export const openApiDocument = {
                 schema: { type: "integer", const: AUDIT_SCHEMA_VERSION },
               },
               Link: {
-                description: "Links to the response schema and this service description.",
+                description: "Links to the response schema, service description, documentation, and status.",
                 schema: { type: "string" },
               },
             },
@@ -123,6 +127,35 @@ export const openApiDocument = {
           "429": { $ref: "#/components/responses/RateLimited" },
           "502": { $ref: "#/components/responses/UpstreamError" },
           "504": { $ref: "#/components/responses/GatewayTimeout" },
+        },
+      },
+    },
+    [STATUS_PATH]: {
+      get: {
+        tags: ["Operational"],
+        summary: "Check whether the Constellation service is responding",
+        description:
+          "Checks the application layer only. It does not contact GitHub or consume an upstream request.",
+        operationId: "getServiceStatus",
+        responses: {
+          "200": {
+            description: "The application layer is responding.",
+            headers: {
+              "Cache-Control": {
+                description: "Status observations must not be reused.",
+                schema: { type: "string", const: "no-store" },
+              },
+              Link: {
+                description: "Links to contracts, documentation, and this status resource.",
+                schema: { type: "string" },
+              },
+            },
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ServiceStatus" },
+              },
+            },
+          },
         },
       },
     },
@@ -158,6 +191,42 @@ export const openApiDocument = {
   components: {
     schemas: {
       Error: errorSchema,
+      ServiceStatus: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "status",
+          "service",
+          "auditSchemaVersion",
+          "dependencies",
+          "contracts",
+          "checkedAt",
+        ],
+        properties: {
+          status: { type: "string", const: "ok" },
+          service: { type: "string", const: "constellation" },
+          auditSchemaVersion: { type: "integer", const: AUDIT_SCHEMA_VERSION },
+          dependencies: {
+            type: "object",
+            additionalProperties: false,
+            required: ["github"],
+            properties: {
+              github: { type: "string", const: "not-checked" },
+            },
+          },
+          contracts: {
+            type: "object",
+            additionalProperties: false,
+            required: ["auditSchema", "openApi", "documentation"],
+            properties: {
+              auditSchema: { type: "string", format: "uri" },
+              openApi: { type: "string", format: "uri" },
+              documentation: { type: "string", format: "uri" },
+            },
+          },
+          checkedAt: { type: "string", format: "date-time" },
+        },
+      },
     },
     responses: {
       BadRequest: {
