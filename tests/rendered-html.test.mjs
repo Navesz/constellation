@@ -59,10 +59,39 @@ test("serves the machine-readable audit schema with long-lived caching", async (
   assert.equal(schema.additionalProperties, false);
 });
 
+test("serves the OpenAPI entry document with long-lived caching", async () => {
+  const worker = await loadWorker();
+  const response = await worker.fetch(
+    new Request("http://localhost/api/openapi.json"),
+    environment,
+    executionContext,
+  );
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /^application\/openapi\+json\b/i);
+  assert.equal(response.headers.get("access-control-allow-origin"), "*");
+  assert.equal(
+    response.headers.get("cache-control"),
+    "public, s-maxage=86400, stale-while-revalidate=604800",
+  );
+  const description = await response.json();
+  assert.equal(description.openapi, "3.1.1");
+  assert.equal(description.paths["/api/audit"].get.operationId, "getProfileAudit");
+  assert.equal(
+    description.paths["/api/audit"].get.responses["200"].content["application/json"].schema.$ref,
+    "https://constellation-profile.leonardonavesworking.chatgpt.site/api/audit/schema/2",
+  );
+});
+
 test("answers CORS preflight consistently for the public API routes", async () => {
   const worker = await loadWorker();
 
-  for (const path of ["/api/audit", "/api/audit/schema", "/api/audit/schema/2"]) {
+  for (const path of [
+    "/api/audit",
+    "/api/audit/schema",
+    "/api/audit/schema/2",
+    "/api/openapi.json",
+  ]) {
     const response = await worker.fetch(
       new Request(`http://localhost${path}`, {
         method: "OPTIONS",
@@ -175,7 +204,8 @@ test("returns an honest partial audit when secondary GitHub sources fail", async
   );
   assert.equal(
     response.headers.get("link"),
-    '</api/audit/schema/2>; rel="describedby"; type="application/schema+json"',
+    '</api/audit/schema/2>; rel="describedby"; type="application/schema+json", '
+      + '</api/openapi.json>; rel="service-desc"; type="application/openapi+json"',
   );
   const audit = await response.json();
   assert.equal(audit.schemaVersion, 2);
