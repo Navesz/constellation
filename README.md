@@ -39,6 +39,10 @@ fontes indisponíveis e a comparação carregada. O arquivo nunca inclui o
 histórico local do navegador, por isso pode ser anexado a documentação, perfis
 profissionais ou arquivos pessoais sem transportar essa memória privada.
 
+O retrato também pode ser baixado como HTML autocontido, pronto para abrir
+offline ou imprimir. Ele não executa scripts, não carrega fontes, imagens ou
+outros recursos externos e, assim como o Markdown, não inclui o histórico local.
+
 A auditoria atual também pode ser exportada como JSON estruturado. O envelope
 `constellation-audit`, atualmente na versão 1, preserva os dados públicos, os
 diagnósticos de cada fonte e a comparação carregada. Campos de privacidade no

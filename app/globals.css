@@ -510,6 +510,7 @@ footer {
 .refresh-button,
 .share-button,
 .report-button,
+.html-report-button,
 .data-button {
   min-height: 34px;
   border: 1px solid var(--ink);
@@ -525,6 +526,7 @@ footer {
 }
 
 .report-button,
+.html-report-button,
 .data-button {
   border-color: var(--line-strong);
 }
@@ -536,6 +538,7 @@ footer {
 .refresh-button:hover:not(:disabled),
 .share-button:hover,
 .report-button:hover:not(:disabled),
+.html-report-button:hover:not(:disabled),
 .data-button:hover:not(:disabled) {
   color: var(--paper-bright);
   background: var(--ink);
@@ -543,6 +546,7 @@ footer {
 
 .refresh-button:disabled,
 .report-button:disabled,
+.html-report-button:disabled,
 .data-button:disabled {
   cursor: wait;
   opacity: 0.58;
