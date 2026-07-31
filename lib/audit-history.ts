@@ -1,4 +1,7 @@
+import { GITHUB_LOGIN_PATTERN } from "./github-profile.ts";
+
 export const AUDIT_HISTORY_STORAGE_KEY = "constellation:audit-history:v1";
+export const AUDIT_HISTORY_BACKUP_FORMAT = "constellation-audit-history";
 export const MAX_SNAPSHOTS_PER_PROFILE = 12;
 export const MAX_TRACKED_PROFILES = 8;
 
@@ -15,6 +18,13 @@ export type AuditSnapshot = {
 };
 
 export type AuditHistory = Record<string, AuditSnapshot[]>;
+
+export type AuditHistoryBackup = {
+  format: typeof AUDIT_HISTORY_BACKUP_FORMAT;
+  version: 1;
+  exportedAt: string;
+  history: AuditHistory;
+};
 
 export type AuditChanges = {
   visibleAchievements: number | null;
@@ -53,7 +63,7 @@ function profileKey(login: string) {
 }
 
 function nullableCount(value: unknown): value is number | null {
-  return value === null || (typeof value === "number" && Number.isFinite(value) && value >= 0);
+  return value === null || (typeof value === "number" && Number.isInteger(value) && value >= 0);
 }
 
 function validSnapshot(value: unknown): value is AuditSnapshot {
@@ -63,7 +73,7 @@ function validSnapshot(value: unknown): value is AuditSnapshot {
   return (
     snapshot.version === 1 &&
     typeof snapshot.login === "string" &&
-    snapshot.login.length > 0 &&
+    GITHUB_LOGIN_PATTERN.test(snapshot.login) &&
     typeof snapshot.capturedAt === "string" &&
     Number.isFinite(Date.parse(snapshot.capturedAt)) &&
     typeof snapshot.complete === "boolean" &&
@@ -71,12 +81,43 @@ function validSnapshot(value: unknown): value is AuditSnapshot {
     nullableCount(snapshot.mergedPullRequests) &&
     nullableCount(snapshot.topRepositoryStars) &&
     typeof snapshot.publicRepositories === "number" &&
-    Number.isFinite(snapshot.publicRepositories) &&
+    Number.isInteger(snapshot.publicRepositories) &&
     snapshot.publicRepositories >= 0 &&
     (snapshot.unlockedAchievementSlugs === null ||
       (Array.isArray(snapshot.unlockedAchievementSlugs) &&
-        snapshot.unlockedAchievementSlugs.every((slug) => typeof slug === "string")))
+        snapshot.unlockedAchievementSlugs.every((slug) => (
+          typeof slug === "string" && /^[a-z0-9-]+$/.test(slug)
+        ))))
   );
+}
+
+function validBackupHistory(value: unknown): value is AuditHistory {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+
+  const entries = Object.entries(value);
+  const normalizedKeys = entries.map(([login]) => profileKey(login));
+  if (
+    entries.length > MAX_TRACKED_PROFILES ||
+    new Set(normalizedKeys).size !== normalizedKeys.length
+  ) {
+    return false;
+  }
+
+  return entries.every(([login, snapshots]) => (
+    profileKey(login).length > 0 &&
+    Array.isArray(snapshots) &&
+    snapshots.length > 0 &&
+    snapshots.length <= MAX_SNAPSHOTS_PER_PROFILE &&
+    snapshots.every((snapshot) => (
+      validSnapshot(snapshot) &&
+      snapshot.complete &&
+      snapshot.visibleAchievementCount !== null &&
+      snapshot.mergedPullRequests !== null &&
+      snapshot.topRepositoryStars !== null &&
+      snapshot.unlockedAchievementSlugs !== null &&
+      profileKey(snapshot.login) === profileKey(login)
+    ))
+  ));
 }
 
 function sameSignals(left: AuditSnapshot, right: AuditSnapshot) {
@@ -117,7 +158,7 @@ export function parseAuditHistory(serialized: string | null): AuditHistory {
     const parsed = JSON.parse(serialized) as unknown;
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
 
-    return Object.fromEntries(
+    const history = Object.fromEntries(
       Object.entries(parsed)
         .filter(([, snapshots]) => Array.isArray(snapshots))
         .map(([login, snapshots]) => [
@@ -125,6 +166,16 @@ export function parseAuditHistory(serialized: string | null): AuditHistory {
           (snapshots as unknown[]).filter(validSnapshot).slice(-MAX_SNAPSHOTS_PER_PROFILE),
         ])
         .filter(([, snapshots]) => (snapshots as AuditSnapshot[]).length > 0),
+    ) as AuditHistory;
+
+    return Object.fromEntries(
+      Object.entries(history)
+        .sort(([, left], [, right]) => {
+          const leftTime = Date.parse(left.at(-1)?.capturedAt ?? "");
+          const rightTime = Date.parse(right.at(-1)?.capturedAt ?? "");
+          return rightTime - leftTime;
+        })
+        .slice(0, MAX_TRACKED_PROFILES),
     );
   } catch {
     return {};
@@ -133,6 +184,58 @@ export function parseAuditHistory(serialized: string | null): AuditHistory {
 
 export function serializeAuditHistory(history: AuditHistory) {
   return JSON.stringify(history);
+}
+
+export function countAuditHistorySnapshots(history: AuditHistory) {
+  return Object.values(history).reduce((total, snapshots) => total + snapshots.length, 0);
+}
+
+export function auditHistoryBackupFilename(exportedAt: string) {
+  const parsedDate = new Date(exportedAt);
+  const date = Number.isNaN(parsedDate.getTime()) ? "backup" : parsedDate.toISOString().slice(0, 10);
+  return `constellation-history-${date}.json`;
+}
+
+export function serializeAuditHistoryBackup(history: AuditHistory, exportedAt = new Date().toISOString()) {
+  const backup: AuditHistoryBackup = {
+    format: AUDIT_HISTORY_BACKUP_FORMAT,
+    version: 1,
+    exportedAt,
+    history: mergeAuditHistories({}, history),
+  };
+
+  return JSON.stringify(backup, null, 2);
+}
+
+export function parseAuditHistoryBackup(serialized: string): AuditHistoryBackup | null {
+  try {
+    const parsed = JSON.parse(serialized) as Partial<AuditHistoryBackup>;
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      parsed.format !== AUDIT_HISTORY_BACKUP_FORMAT ||
+      parsed.version !== 1 ||
+      typeof parsed.exportedAt !== "string" ||
+      !Number.isFinite(Date.parse(parsed.exportedAt)) ||
+      !validBackupHistory(parsed.history)
+    ) {
+      return null;
+    }
+
+    return {
+      format: AUDIT_HISTORY_BACKUP_FORMAT,
+      version: 1,
+      exportedAt: parsed.exportedAt,
+      history: Object.fromEntries(
+        Object.entries(parsed.history).map(([login, snapshots]) => [
+          profileKey(login),
+          [...snapshots].sort((left, right) => Date.parse(left.capturedAt) - Date.parse(right.capturedAt)),
+        ]),
+      ),
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function findComparisonSnapshot(history: AuditHistory, current: AuditSnapshot) {
@@ -164,6 +267,18 @@ export function appendAuditSnapshot(history: AuditHistory, snapshot: AuditSnapsh
         return rightTime - leftTime;
       })
       .slice(0, MAX_TRACKED_PROFILES),
+  );
+}
+
+export function mergeAuditHistories(current: AuditHistory, imported: AuditHistory): AuditHistory {
+  const snapshots = [...Object.values(current), ...Object.values(imported)]
+    .flat()
+    .filter((snapshot) => validSnapshot(snapshot) && snapshot.complete)
+    .sort((left, right) => Date.parse(left.capturedAt) - Date.parse(right.capturedAt));
+
+  return snapshots.reduce<AuditHistory>(
+    (history, snapshot) => appendAuditSnapshot(history, snapshot),
+    {},
   );
 }
 

@@ -39,6 +39,11 @@ Leituras parciais nunca substituem uma linha de base completa. A linha do tempo
 mostra todas as observações distintas, seus quatro sinais e a mudança desde o
 estado anterior.
 
+Essa memória também pode ser baixada explicitamente como um backup JSON e
+restaurada em outro navegador. A importação valida o formato, mescla estados
+sem apagar observações mais recentes e reaplica os mesmos limites de retenção.
+Esse arquivo é separado do relatório Markdown público.
+
 Um segundo perfil pode ser adicionado para comparação. A URL preserva os dois
 logins, o painel calcula o delta como `segundo - principal` e omite qualquer
 diferença cuja fonte esteja indisponível. A comparação não cria pontuação geral
