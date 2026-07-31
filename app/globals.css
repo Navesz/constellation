@@ -873,6 +873,124 @@ footer {
   font-size: 0.64rem;
 }
 
+.history-timeline {
+  margin-top: 36px;
+  border-top: 1px solid var(--ink);
+  padding-top: 24px;
+}
+
+.history-timeline-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.history-timeline-heading h3 {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.history-timeline-heading span {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.history-table-wrap {
+  margin-top: 16px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  -webkit-overflow-scrolling: touch;
+}
+
+.history-table {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-table caption {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  background: rgba(16, 24, 32, 0.025);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.history-table th,
+.history-table td {
+  padding: 14px 16px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+}
+
+.history-table th:last-child,
+.history-table td:last-child {
+  border-right: 0;
+}
+
+.history-table tbody tr:last-child th,
+.history-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.history-table thead th {
+  color: var(--muted);
+  background: rgba(16, 24, 32, 0.04);
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.history-table thead th:first-child,
+.history-table thead th:last-child,
+.history-table tbody th,
+.history-table .timeline-change {
+  text-align: left;
+}
+
+.history-table tbody tr:first-child {
+  background: rgba(215, 244, 91, 0.18);
+}
+
+.history-table tbody th {
+  min-width: 150px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.history-table tbody th small {
+  display: block;
+  margin-top: 4px;
+  color: var(--signal-dark);
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.history-table td {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+}
+
+.history-table .timeline-change {
+  min-width: 210px;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+
 .mission {
   display: grid;
   grid-template-columns: 1fr auto;

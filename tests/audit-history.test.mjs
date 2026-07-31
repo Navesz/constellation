@@ -4,6 +4,7 @@ import {
   MAX_SNAPSHOTS_PER_PROFILE,
   MAX_TRACKED_PROFILES,
   appendAuditSnapshot,
+  buildAuditTimeline,
   compareAuditSnapshots,
   createAuditSnapshot,
   findComparisonSnapshot,
@@ -93,6 +94,65 @@ test("compares changes against the last different state", () => {
 
   const updated = appendAuditSnapshot(history, current);
   assert.equal(findComparisonSnapshot(updated, current)?.capturedAt, baseline.capturedAt);
+});
+
+test("builds a newest-first timeline from complete snapshots in chronological order", () => {
+  const baseline = createAuditSnapshot(audit());
+  const middle = createAuditSnapshot(audit({
+    metrics: {
+      mergedPullRequests: 15,
+      topRepository: { stars: 8 },
+    },
+    generatedAt: "2026-08-01T00:00:00.000Z",
+  }));
+  const latest = createAuditSnapshot(audit({
+    profile: { login: "octocat", publicRepos: 9 },
+    metrics: {
+      mergedPullRequests: 17,
+      topRepository: { stars: 8 },
+    },
+    visibleAchievementCount: 3,
+    achievements: [
+      { slug: "quickdraw", unlocked: true },
+      { slug: "pull-shark", unlocked: true },
+      { slug: "starstruck", unlocked: true },
+    ],
+    generatedAt: "2026-08-03T00:00:00.000Z",
+  }));
+  const partial = createAuditSnapshot(audit({
+    sources: {
+      achievements: "unavailable",
+      mergedPullRequests: "available",
+      repositories: "available",
+    },
+    visibleAchievementCount: null,
+    generatedAt: "2026-08-02T00:00:00.000Z",
+  }));
+
+  const timeline = buildAuditTimeline(
+    { octocat: [latest, partial, baseline, middle] },
+    "OCTOCAT",
+  );
+
+  assert.deepEqual(
+    timeline.map((entry) => entry.snapshot.capturedAt),
+    [latest.capturedAt, middle.capturedAt, baseline.capturedAt],
+  );
+  assert.deepEqual(timeline[0].changes, {
+    visibleAchievements: 1,
+    mergedPullRequests: 2,
+    topRepositoryStars: 0,
+    publicRepositories: 1,
+    newlyUnlockedSlugs: ["starstruck"],
+  });
+  assert.deepEqual(timeline[1].changes, {
+    visibleAchievements: 0,
+    mergedPullRequests: 3,
+    topRepositoryStars: 1,
+    publicRepositories: 0,
+    newlyUnlockedSlugs: [],
+  });
+  assert.equal(timeline[2].changes, null);
 });
 
 test("deduplicates unchanged signals and caps profile history", () => {
