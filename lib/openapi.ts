@@ -1,8 +1,14 @@
 import { AUDIT_SCHEMA_VERSION } from "./achievements.ts";
 import { AUDIT_SCHEMA_LINK_HEADER, AUDIT_SCHEMA_PATH } from "./audit-schema.ts";
+import {
+  AUDIT_EXPORT_SCHEMA_PATH,
+  AUDIT_EXPORT_VERSION,
+  LEGACY_AUDIT_EXPORT_SCHEMA_PATH,
+} from "./audit-export.ts";
+import { AUDIT_EXPORT_SCHEMA_ALIAS_PATH } from "./audit-export-schema.ts";
+import { PUBLIC_SITE_URL } from "./site.ts";
 
-export const PUBLIC_SITE_URL =
-  "https://constellation-profile.leonardonavesworking.chatgpt.site";
+export { PUBLIC_SITE_URL } from "./site.ts";
 export const OPENAPI_PATH = "/api/openapi.json";
 export const OPENAPI_MEDIA_TYPE = "application/openapi+json";
 export const API_DOCS_PATH = "/docs";
@@ -53,6 +59,32 @@ const auditSchemaOperation = {
     },
   },
 } as const;
+
+function exportSchemaOperation(version: 1 | typeof AUDIT_EXPORT_VERSION) {
+  return {
+    tags: ["Contract"],
+    summary: `Read the audit export schema version ${version}`,
+    operationId: version === AUDIT_EXPORT_VERSION
+      ? "getAuditExportSchema"
+      : "getLegacyAuditExportSchema",
+    responses: {
+      "200": {
+        description: `JSON Schema Draft 2020-12 for audit export version ${version}.`,
+        headers: {
+          "X-Constellation-Export-Version": {
+            description: "Audit export envelope version.",
+            schema: { type: "integer", const: version },
+          },
+        },
+        content: {
+          "application/schema+json": {
+            schema: { type: "object" },
+          },
+        },
+      },
+    },
+  } as const;
+}
 
 export const openApiDocument = {
   openapi: "3.1.1",
@@ -170,6 +202,20 @@ export const openApiDocument = {
     [AUDIT_SCHEMA_PATH]: {
       get: auditSchemaOperation,
     },
+    [AUDIT_EXPORT_SCHEMA_ALIAS_PATH]: {
+      get: {
+        ...exportSchemaOperation(AUDIT_EXPORT_VERSION),
+        summary: "Read the current audit export schema through its stable alias",
+        operationId: "getCurrentAuditExportSchema",
+        deprecated: true,
+      },
+    },
+    [LEGACY_AUDIT_EXPORT_SCHEMA_PATH]: {
+      get: exportSchemaOperation(1),
+    },
+    [AUDIT_EXPORT_SCHEMA_PATH]: {
+      get: exportSchemaOperation(AUDIT_EXPORT_VERSION),
+    },
     [OPENAPI_PATH]: {
       get: {
         tags: ["Contract"],
@@ -198,6 +244,7 @@ export const openApiDocument = {
           "status",
           "service",
           "auditSchemaVersion",
+          "auditExportVersion",
           "dependencies",
           "contracts",
           "checkedAt",
@@ -206,6 +253,7 @@ export const openApiDocument = {
           status: { type: "string", const: "ok" },
           service: { type: "string", const: "constellation" },
           auditSchemaVersion: { type: "integer", const: AUDIT_SCHEMA_VERSION },
+          auditExportVersion: { type: "integer", const: AUDIT_EXPORT_VERSION },
           dependencies: {
             type: "object",
             additionalProperties: false,
@@ -217,9 +265,10 @@ export const openApiDocument = {
           contracts: {
             type: "object",
             additionalProperties: false,
-            required: ["auditSchema", "openApi", "documentation"],
+            required: ["auditSchema", "exportSchema", "openApi", "documentation"],
             properties: {
               auditSchema: { type: "string", format: "uri" },
+              exportSchema: { type: "string", format: "uri" },
               openApi: { type: "string", format: "uri" },
               documentation: { type: "string", format: "uri" },
             },

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   AUDIT_EXPORT_FORMAT,
+  AUDIT_EXPORT_SCHEMA_URL,
   AUDIT_EXPORT_VERSION,
   auditDataFilename,
   buildAuditDataExport,
@@ -55,6 +56,7 @@ test("builds a versioned public-data envelope without local history", () => {
   });
 
   assert.equal(payload.format, AUDIT_EXPORT_FORMAT);
+  assert.equal(payload.$schema, AUDIT_EXPORT_SCHEMA_URL);
   assert.equal(payload.version, AUDIT_EXPORT_VERSION);
   assert.equal(payload.exportedAt, exportedAt);
   assert.equal(payload.shareUrl, "https://example.test/?login=octocat");

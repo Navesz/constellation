@@ -3,6 +3,11 @@ import test from "node:test";
 import { AUDIT_SCHEMA_VERSION } from "../lib/achievements.ts";
 import { AUDIT_SCHEMA_PATH } from "../lib/audit-schema.ts";
 import {
+  AUDIT_EXPORT_SCHEMA_PATH,
+  LEGACY_AUDIT_EXPORT_SCHEMA_PATH,
+} from "../lib/audit-export.ts";
+import { AUDIT_EXPORT_SCHEMA_ALIAS_PATH } from "../lib/audit-export-schema.ts";
+import {
   API_DOCS_LINK_HEADER,
   API_DOCS_PATH,
   OPENAPI_LINK_HEADER,
@@ -52,6 +57,9 @@ test("describes every public GET route and the versioned audit payload", () => {
     STATUS_PATH,
     "/api/audit/schema",
     AUDIT_SCHEMA_PATH,
+    AUDIT_EXPORT_SCHEMA_ALIAS_PATH,
+    LEGACY_AUDIT_EXPORT_SCHEMA_PATH,
+    AUDIT_EXPORT_SCHEMA_PATH,
     OPENAPI_PATH,
   ]);
 
@@ -69,6 +77,19 @@ test("describes every public GET route and the versioned audit payload", () => {
   );
   assert.equal(operation.responses["429"].$ref, "#/components/responses/RateLimited");
   assert.equal(openApiDocument.paths["/api/audit/schema"].get.deprecated, true);
+  assert.equal(
+    openApiDocument.paths[AUDIT_EXPORT_SCHEMA_ALIAS_PATH].get.operationId,
+    "getCurrentAuditExportSchema",
+  );
+  assert.equal(openApiDocument.paths[AUDIT_EXPORT_SCHEMA_ALIAS_PATH].get.deprecated, true);
+  assert.equal(
+    openApiDocument.paths[LEGACY_AUDIT_EXPORT_SCHEMA_PATH].get.operationId,
+    "getLegacyAuditExportSchema",
+  );
+  assert.equal(
+    openApiDocument.paths[AUDIT_EXPORT_SCHEMA_PATH].get.operationId,
+    "getAuditExportSchema",
+  );
   assert.equal(openApiDocument.components.schemas.Error.additionalProperties, false);
   assert.equal(openApiDocument.paths[STATUS_PATH].get.operationId, "getServiceStatus");
   assert.equal(

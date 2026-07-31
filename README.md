@@ -44,10 +44,12 @@ offline ou imprimir. Ele não executa scripts, não carrega fontes, imagens ou
 outros recursos externos e, assim como o Markdown, não inclui o histórico local.
 
 A auditoria atual também pode ser exportada como JSON estruturado. O envelope
-`constellation-audit`, atualmente na versão 1, preserva os dados públicos, os
+`constellation-audit`, atualmente na versão 2, preserva os dados públicos, os
 diagnósticos de cada fonte e a comparação carregada. Campos de privacidade no
 próprio arquivo registram que o histórico local não foi incluído. Essa exportação
-é separada do backup JSON da memória privada do navegador.
+é separada do backup JSON da memória privada do navegador. Cada arquivo informa
+seu JSON Schema em `$schema`; o contrato atual fica em `GET /api/export/schema/2`,
+e o contrato legado da versão 1 permanece disponível em `GET /api/export/schema/1`.
 
 A rota `GET /api/audit?login=octocat` expõe o mesmo retrato para integrações.
 Respostas bem-sucedidas carregam `schemaVersion: 2` no corpo e o cabeçalho
@@ -59,7 +61,7 @@ versão falham de forma legível, sem produzir contagens parciais acidentais.
 O JSON Schema Draft 2020-12 oficial fica em `GET /api/audit/schema/2` e também é
 anunciado pelo cabeçalho `Link` de cada auditoria bem-sucedida.
 Uma descrição OpenAPI 3.1.1 completa fica em `GET /api/openapi.json`; ela
-documenta parâmetros, respostas, erros e referencia o JSON Schema versionado.
+documenta parâmetros, respostas, erros e referencia os JSON Schemas versionados.
 O guia humano em `GET /docs` reúne exemplos prontos, estados de resposta,
 privacidade e limites operacionais. O mesmo cabeçalho `Link` anuncia a descrição
 com `service-desc`, o guia com `service-doc` e `GET /api/status` com `status`,

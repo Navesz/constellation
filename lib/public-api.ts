@@ -1,6 +1,7 @@
 export const PUBLIC_API_EXPOSED_HEADERS = [
   "Link",
   "Retry-After",
+  "X-Constellation-Export-Version",
   "X-Constellation-Schema-Version",
 ].join(", ");
 
