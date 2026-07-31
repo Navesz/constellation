@@ -21,7 +21,8 @@ const executionContext = {
 const publicApiLinkHeader =
   '</api/audit/schema/2>; rel="describedby"; type="application/schema+json", '
   + '</api/openapi.json>; rel="service-desc"; type="application/openapi+json", '
-  + '</docs>; rel="service-doc"; type="text/html"';
+  + '</docs>; rel="service-doc"; type="text/html", '
+  + '</api/status>; rel="status"; type="application/json"';
 
 test("server-renders the finished Constellation experience", async () => {
   const worker = await loadWorker();
@@ -91,6 +92,44 @@ test("serves the OpenAPI entry document with long-lived caching", async () => {
   );
 });
 
+test("reports application health without contacting GitHub or caching the observation", async (context) => {
+  const originalFetch = globalThis.fetch;
+  let externalRequestCount = 0;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+  globalThis.fetch = async () => {
+    externalRequestCount += 1;
+    return new Response("Unexpected request", { status: 500 });
+  };
+
+  const worker = await loadWorker();
+  const response = await worker.fetch(
+    new Request("http://localhost/api/status"),
+    environment,
+    executionContext,
+  );
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /^application\/json\b/i);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(response.headers.get("access-control-allow-origin"), "*");
+  assert.equal(response.headers.get("link"), publicApiLinkHeader);
+
+  const status = await response.json();
+  assert.equal(status.status, "ok");
+  assert.equal(status.service, "constellation");
+  assert.equal(status.auditSchemaVersion, 2);
+  assert.deepEqual(status.dependencies, { github: "not-checked" });
+  assert.deepEqual(status.contracts, {
+    auditSchema: "http://localhost/api/audit/schema/2",
+    openApi: "http://localhost/api/openapi.json",
+    documentation: "http://localhost/docs",
+  });
+  assert.equal(Number.isNaN(Date.parse(status.checkedAt)), false);
+  assert.equal(externalRequestCount, 0);
+});
+
 test("server-renders a human integration guide next to the machine contracts", async () => {
   const worker = await loadWorker();
   const response = await worker.fetch(
@@ -108,6 +147,8 @@ test("server-renders a human integration guide next to the machine contracts", a
   assert.match(html, /\/api\/audit\?login=octocat/);
   assert.match(html, /\/api\/audit\/schema\/2/);
   assert.match(html, /\/api\/openapi\.json/);
+  assert.match(html, /\/api\/status/);
+  assert.match(html, /Saúde sem gastar uma consulta externa\./);
   assert.match(html, /Retry-After/);
   assert.match(html, /Sem spam/);
 });
@@ -120,6 +161,7 @@ test("answers CORS preflight consistently for the public API routes", async () =
     "/api/audit/schema",
     "/api/audit/schema/2",
     "/api/openapi.json",
+    "/api/status",
   ]) {
     const response = await worker.fetch(
       new Request(`http://localhost${path}`, {

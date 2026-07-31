@@ -58,8 +58,11 @@ Uma descrição OpenAPI 3.1.1 completa fica em `GET /api/openapi.json`; ela
 documenta parâmetros, respostas, erros e referencia o JSON Schema versionado.
 O guia humano em `GET /docs` reúne exemplos prontos, estados de resposta,
 privacidade e limites operacionais. O mesmo cabeçalho `Link` anuncia a descrição
-com `service-desc` e o guia com `service-doc`, permitindo que pessoas e
-ferramentas descubram ambos a partir de qualquer resposta da auditoria.
+com `service-desc`, o guia com `service-doc` e `GET /api/status` com `status`,
+permitindo que pessoas e ferramentas descubram todos a partir de qualquer
+resposta da auditoria. A rota de status não consulta o GitHub, responde com
+`Cache-Control: no-store` e distingue explicitamente saúde da aplicação de
+disponibilidade do serviço externo.
 As rotas públicas aceitam `GET` entre origens com CORS explícito e respondem a
 preflight `OPTIONS`; `Link`, `Retry-After` e a versão do esquema ficam expostos
 ao navegador. Respostas `429` usam ainda o cabeçalho HTTP `Retry-After`, além do
