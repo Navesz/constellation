@@ -17,9 +17,9 @@ import {
   type AuditChanges,
   type AuditSnapshot,
 } from "@/lib/audit-history";
-import type { AchievementProgress, AuditResponse } from "@/lib/achievements";
+import { selectNextMission, type AchievementProgress, type AuditResponse } from "@/lib/achievements";
 import { normalizeGitHubLogin } from "@/lib/github-profile";
-import { compareProfiles, type ComparisonAchievementState } from "@/lib/profile-comparison";
+import { compareProfiles, comparisonAchievementLabel } from "@/lib/profile-comparison";
 
 const DEFAULT_LOGIN = "Navesz";
 
@@ -58,22 +58,65 @@ function signedNumber(value: number) {
   return "0";
 }
 
-function comparisonAchievementLabel(state: ComparisonAchievementState) {
-  if (state.badgeStatus === "unavailable") return "Fonte indisponível";
-  if (state.unlocked) return `Nível ${state.tier}`;
-  if (state.nextThreshold) return `${state.current} de ${state.nextThreshold}`;
-  return "Não visível";
-}
-
 function ProgressBar({ achievement }: { achievement: AchievementProgress }) {
-  const percent = achievement.nextThreshold
-    ? Math.min(100, Math.round((achievement.current / achievement.nextThreshold) * 100))
-    : achievement.unlocked
-      ? 100
-      : 0;
+  if (achievement.catalogStatus === "discovered") {
+    return (
+      <div className="progress" role="img" aria-label="Selo público detectado">
+        <span style={{ width: "100%" }} />
+      </div>
+    );
+  }
+
+  if (
+    achievement.current === null ||
+    achievement.measurementKind === "not-public" ||
+    achievement.measurementKind === "unavailable"
+  ) {
+    return (
+      <div
+        className="progress is-indeterminate"
+        role="img"
+        aria-label={
+          achievement.measurementKind === "unavailable"
+            ? "Progresso indisponível"
+            : "Progresso não público"
+        }
+      >
+        <span />
+      </div>
+    );
+  }
+
+  if (achievement.nextThreshold === null) {
+    return (
+      <div
+        className="progress"
+        role="img"
+        aria-label={
+          achievement.unlocked
+            ? "Marco conhecido concluído"
+            : "Marcos numéricos conhecidos atingidos; selo não visível"
+        }
+      >
+        <span style={{ width: "100%" }} />
+      </div>
+    );
+  }
+
+  const percent = Math.min(
+    100,
+    Math.round((achievement.current / achievement.nextThreshold) * 100),
+  );
 
   return (
-    <div className="progress" aria-label={`${percent}% do próximo marco`}>
+    <div
+      className="progress"
+      role="progressbar"
+      aria-label="Progresso até o próximo marco"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={percent}
+    >
       <span style={{ width: `${percent}%` }} />
     </div>
   );
@@ -87,7 +130,7 @@ function AchievementCard({ achievement }: { achievement: AchievementProgress }) 
         ? `Detectada no perfil · nível ${achievement.tier}`
         : achievement.unlocked
           ? `Desbloqueada · nível ${achievement.tier}`
-          : "Em rota";
+          : "Não visível no perfil";
   const milestoneLabel = achievement.nextThreshold
     ? `Próximo: ${achievement.nextThreshold}`
     : achievement.catalogStatus === "discovered"
@@ -413,16 +456,10 @@ function Observatory() {
     return () => controller.abort();
   }, [comparisonLogin, comparisonRefreshKey]);
 
-  const nextMission = useMemo(() => {
-    if (!audit) return null;
-    return [...audit.achievements]
-      .filter((achievement) => achievement.nextThreshold && achievement.measurementKind !== "unavailable")
-      .sort((a, b) => {
-        const aRemaining = Math.max(0, (a.nextThreshold ?? a.current) - a.current);
-        const bRemaining = Math.max(0, (b.nextThreshold ?? b.current) - b.current);
-        return aRemaining - bRemaining;
-      })[0];
-  }, [audit]);
+  const nextMission = useMemo(
+    () => audit ? selectNextMission(audit.achievements) : null,
+    [audit],
+  );
 
   const auditIsCurrent = Boolean(
     audit && audit.profile.login.toLowerCase() === routeLogin.toLowerCase(),

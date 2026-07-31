@@ -1119,6 +1119,20 @@ footer {
   background: var(--signal);
 }
 
+.progress.is-indeterminate {
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(16, 24, 32, 0.14) 0,
+    rgba(16, 24, 32, 0.14) 7px,
+    transparent 7px,
+    transparent 13px
+  );
+}
+
+.progress.is-indeterminate span {
+  display: none;
+}
+
 .achievement-footer {
   margin-top: 11px;
   color: var(--muted);
