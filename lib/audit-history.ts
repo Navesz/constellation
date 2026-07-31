@@ -24,6 +24,11 @@ export type AuditChanges = {
   newlyUnlockedSlugs: string[];
 };
 
+export type AuditTimelineEntry = {
+  snapshot: AuditSnapshot;
+  changes: AuditChanges | null;
+};
+
 type SnapshotInput = {
   profile: {
     login: string;
@@ -185,4 +190,17 @@ export function compareAuditSnapshots(current: AuditSnapshot, previous: AuditSna
     publicRepositories: current.publicRepositories - previous.publicRepositories,
     newlyUnlockedSlugs,
   };
+}
+
+export function buildAuditTimeline(history: AuditHistory, login: string): AuditTimelineEntry[] {
+  const snapshots = [...(history[profileKey(login)] ?? [])]
+    .filter((snapshot) => snapshot.complete)
+    .sort((left, right) => Date.parse(left.capturedAt) - Date.parse(right.capturedAt));
+
+  return snapshots
+    .map((snapshot, index) => ({
+      snapshot,
+      changes: index > 0 ? compareAuditSnapshots(snapshot, snapshots[index - 1]) : null,
+    }))
+    .reverse();
 }

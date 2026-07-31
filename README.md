@@ -30,7 +30,9 @@ zeros enganosos.
 Auditorias completas também formam um histórico local com até 12 estados por
 perfil e oito perfis recentes. Essa memória fica somente no navegador, não é
 incluída nos links compartilhados e pode ser apagada por perfil na interface.
-Leituras parciais nunca substituem uma linha de base completa.
+Leituras parciais nunca substituem uma linha de base completa. A linha do tempo
+mostra todas as observações distintas, seus quatro sinais e a mudança desde o
+estado anterior.
 
 Um segundo perfil pode ser adicionado para comparação. A URL preserva os dois
 logins, o painel calcula o delta como `segundo - principal` e omite qualquer

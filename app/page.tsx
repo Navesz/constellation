@@ -8,6 +8,7 @@ import {
   MAX_SNAPSHOTS_PER_PROFILE,
   MAX_TRACKED_PROFILES,
   appendAuditSnapshot,
+  buildAuditTimeline,
   compareAuditSnapshots,
   createAuditSnapshot,
   findComparisonSnapshot,
@@ -16,6 +17,7 @@ import {
   serializeAuditHistory,
   type AuditChanges,
   type AuditSnapshot,
+  type AuditTimelineEntry,
 } from "@/lib/audit-history";
 import { selectNextMission, type AchievementProgress, type AuditResponse } from "@/lib/achievements";
 import { normalizeGitHubLogin } from "@/lib/github-profile";
@@ -37,6 +39,7 @@ type LocalProgressMemory = {
   current: AuditSnapshot;
   previous: AuditSnapshot | null;
   changes: AuditChanges | null;
+  timeline: AuditTimelineEntry[];
   recorded: boolean;
   storageAvailable: boolean;
   cleared: boolean;
@@ -56,6 +59,30 @@ function signedNumber(value: number) {
   if (value > 0) return `+${value}`;
   if (value < 0) return `−${Math.abs(value)}`;
   return "0";
+}
+
+function timelineMetric(value: number | null) {
+  return value === null ? "—" : value.toLocaleString("pt-BR");
+}
+
+function timelineChangeSummary(changes: AuditChanges | null) {
+  if (!changes) return "linha de base";
+
+  const signals = [
+    { value: changes.visibleAchievements, label: "selos" },
+    { value: changes.mergedPullRequests, label: "PRs" },
+    { value: changes.topRepositoryStars, label: "estrelas" },
+    { value: changes.publicRepositories, label: "repositórios" },
+  ]
+    .filter((signal): signal is { value: number; label: string } => signal.value !== null && signal.value !== 0)
+    .map((signal) => `${signedNumber(signal.value)} ${signal.label}`);
+
+  if (changes.newlyUnlockedSlugs.length) {
+    const count = changes.newlyUnlockedSlugs.length;
+    signals.push(`+${count} ${count === 1 ? "novo selo" : "novos selos"}`);
+  }
+
+  return signals.length ? signals.join(" · ") : "sem mudança numérica";
 }
 
 function ProgressBar({ achievement }: { achievement: AchievementProgress }) {
@@ -191,50 +218,97 @@ function ProgressHistory({
         new Date(memory.previous.capturedAt),
       )
     : null;
+  const timelineDate = new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
 
   return (
-    <section className="history-panel" aria-labelledby="history-title" aria-live="polite">
+    <section className="history-panel" aria-labelledby="history-title">
       <div className="history-heading">
         <div>
           <p className="kicker"><span /> memória local</p>
-          <h2 id="history-title">O pulso entre duas leituras.</h2>
+          <h2 id="history-title">O pulso ao longo do tempo.</h2>
         </div>
         <p>
           O histórico fica somente neste navegador, guarda até {MAX_SNAPSHOTS_PER_PROFILE} estados completos por perfil em {MAX_TRACKED_PROFILES} perfis recentes e nunca entra no link compartilhado.
         </p>
       </div>
 
-      {!memory.storageAvailable ? (
-        <p className="history-empty">Este navegador não permitiu salvar o histórico. A auditoria atual continua funcionando normalmente.</p>
-      ) : memory.cleared ? (
-        <p className="history-empty">Histórico deste perfil apagado. Uma nova leitura criará outra linha de base.</p>
-      ) : !memory.previous ? (
-        <p className="history-empty">
-          {memory.recorded
-            ? "Linha de base salva. Volte ou remapeie o perfil depois para enxergar o que mudou."
-            : "Esta leitura está parcial e não substituiu sua última linha de base."}
-        </p>
-      ) : hasChanges ? (
-        <>
-          <p className="history-since">Mudanças desde o último estado diferente, observado em {previousDate}.</p>
-          <div className="history-signal-grid">
-            {changedSignals.map((signal) => (
-              <article className={signal.value < 0 ? "is-negative" : ""} key={signal.label}>
-                <strong>{signedNumber(signal.value)}</strong>
-                <span>{signal.label}</span>
-              </article>
-            ))}
-            {unlockedNames.length ? (
-              <article className="history-unlocked">
-                <strong>✦</strong>
-                <span>Novo selo: {unlockedNames.join(", ")}</span>
-              </article>
-            ) : null}
+      <div aria-live="polite">
+        {!memory.storageAvailable ? (
+          <p className="history-empty">Este navegador não permitiu salvar o histórico. A auditoria atual continua funcionando normalmente.</p>
+        ) : memory.cleared ? (
+          <p className="history-empty">Histórico deste perfil apagado. Uma nova leitura criará outra linha de base.</p>
+        ) : !memory.previous ? (
+          <p className="history-empty">
+            {memory.recorded
+              ? "Linha de base salva. Volte ou remapeie o perfil depois para enxergar o que mudou."
+              : "Esta leitura está parcial e não substituiu sua última linha de base."}
+          </p>
+        ) : hasChanges ? (
+          <>
+            <p className="history-since">Mudanças desde o último estado diferente, observado em {previousDate}.</p>
+            <div className="history-signal-grid">
+              {changedSignals.map((signal) => (
+                <article className={signal.value < 0 ? "is-negative" : ""} key={signal.label}>
+                  <strong>{signedNumber(signal.value)}</strong>
+                  <span>{signal.label}</span>
+                </article>
+              ))}
+              {unlockedNames.length ? (
+                <article className="history-unlocked">
+                  <strong>✦</strong>
+                  <span>Novo selo: {unlockedNames.join(", ")}</span>
+                </article>
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <p className="history-empty">Nenhuma mudança nos sinais comparáveis desde {previousDate}.</p>
+        )}
+      </div>
+
+      {memory.storageAvailable && !memory.cleared && memory.timeline.length ? (
+        <div className="history-timeline">
+          <div className="history-timeline-heading">
+            <h3>Linha do tempo local</h3>
+            <span>{memory.timeline.length} {memory.timeline.length === 1 ? "leitura distinta" : "leituras distintas"}</span>
           </div>
-        </>
-      ) : (
-        <p className="history-empty">Nenhuma mudança nos sinais comparáveis desde {previousDate}.</p>
-      )}
+          <div className="history-table-wrap">
+            <table className="history-table">
+              <caption>Estados completos preservados neste navegador, do mais recente ao mais antigo.</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Observação</th>
+                  <th scope="col">Selos</th>
+                  <th scope="col">PRs</th>
+                  <th scope="col">Estrelas</th>
+                  <th scope="col">Repositórios</th>
+                  <th scope="col">Desde a anterior</th>
+                </tr>
+              </thead>
+              <tbody>
+                {memory.timeline.map((entry, index) => (
+                  <tr key={`${entry.snapshot.capturedAt}-${index}`}>
+                    <th scope="row">
+                      <time dateTime={entry.snapshot.capturedAt}>
+                        {timelineDate.format(new Date(entry.snapshot.capturedAt))}
+                      </time>
+                      {index === 0 ? <small>mais recente</small> : null}
+                    </th>
+                    <td>{timelineMetric(entry.snapshot.visibleAchievementCount)}</td>
+                    <td>{timelineMetric(entry.snapshot.mergedPullRequests)}</td>
+                    <td>{timelineMetric(entry.snapshot.topRepositoryStars)}</td>
+                    <td>{timelineMetric(entry.snapshot.publicRepositories)}</td>
+                    <td className="timeline-change">{timelineChangeSummary(entry.changes)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
 
       {memory.storageAvailable && !memory.cleared && (memory.recorded || memory.previous) ? (
         <button className="history-clear" type="button" onClick={onClear}>Apagar histórico deste perfil</button>
@@ -381,9 +455,10 @@ function Observatory() {
           const history = parseAuditHistory(window.localStorage.getItem(AUDIT_HISTORY_STORAGE_KEY));
           const previous = findComparisonSnapshot(history, currentSnapshot);
           const changes = previous ? compareAuditSnapshots(currentSnapshot, previous) : null;
+          let nextHistory = history;
 
           if (currentSnapshot.complete) {
-            const nextHistory = appendAuditSnapshot(history, currentSnapshot);
+            nextHistory = appendAuditSnapshot(history, currentSnapshot);
             window.localStorage.setItem(AUDIT_HISTORY_STORAGE_KEY, serializeAuditHistory(nextHistory));
           }
 
@@ -391,6 +466,7 @@ function Observatory() {
             current: currentSnapshot,
             previous,
             changes,
+            timeline: buildAuditTimeline(nextHistory, currentSnapshot.login),
             recorded: currentSnapshot.complete,
             storageAvailable: true,
             cleared: false,
@@ -400,6 +476,7 @@ function Observatory() {
             current: currentSnapshot,
             previous: null,
             changes: null,
+            timeline: [],
             recorded: false,
             storageAvailable: false,
             cleared: false,
@@ -570,6 +647,7 @@ function Observatory() {
         ...localProgress,
         previous: null,
         changes: null,
+        timeline: [],
         recorded: false,
         cleared: true,
       });
