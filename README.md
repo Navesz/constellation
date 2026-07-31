@@ -98,6 +98,10 @@ restaurada em outro navegador. A importação valida o formato, mescla estados
 sem apagar observações mais recentes e reaplica os mesmos limites de retenção.
 Esse arquivo é separado do relatório Markdown público.
 
+A linha do tempo do perfil aberto também pode ser baixada como CSV em ordem
+cronológica, com métricas, mudanças desde a leitura anterior e os selos visíveis.
+O arquivo é local e inclui somente o perfil selecionado, pronto para planilhas.
+
 Backups atuais usam a versão 2 e incluem seguidores. Arquivos da versão 1
 continuam aceitos; como esse sinal não existia neles, o valor antigo permanece
 indisponível até que duas novas leituras permitam calcular uma mudança honesta.

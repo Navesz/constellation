@@ -9,6 +9,7 @@ import {
   MAX_TRACKED_PROFILES,
   appendAuditSnapshot,
   auditHistoryBackupFilename,
+  auditTimelineCsvFilename,
   buildAuditTimeline,
   compareAuditSnapshots,
   countAuditHistorySnapshots,
@@ -21,6 +22,7 @@ import {
   removeProfileHistory,
   serializeAuditHistory,
   serializeAuditHistoryBackup,
+  serializeAuditTimelineCsv,
   type AuditChanges,
   type AuditSnapshot,
   type AuditTimelineEntry,
@@ -412,6 +414,7 @@ function ProgressHistory({
   memory,
   onClear,
   onDownloadBackup,
+  onDownloadTimeline,
   onImportBackup,
   backupStatus,
 }: {
@@ -419,6 +422,7 @@ function ProgressHistory({
   memory: LocalProgressMemory;
   onClear: () => void;
   onDownloadBackup: () => void;
+  onDownloadTimeline: () => void;
   onImportBackup: (event: ChangeEvent<HTMLInputElement>) => void;
   backupStatus: string;
 }) {
@@ -544,10 +548,13 @@ function ProgressHistory({
       {memory.storageAvailable ? (
         <div className="history-backup">
           <div>
-            <h3>Backup privado</h3>
-            <p>Baixe todas as linhas do tempo deste navegador ou restaure um backup. A restauração valida e mescla os estados; não substitui observações mais recentes.</p>
+            <h3>Portabilidade privada</h3>
+            <p>Baixe este perfil em CSV para analisar numa planilha, exporte todas as linhas do tempo em JSON ou restaure um backup. A restauração valida e mescla os estados; não substitui observações mais recentes.</p>
           </div>
           <div className="history-backup-actions">
+            {memory.timeline.length ? (
+              <button type="button" onClick={onDownloadTimeline}>Baixar este perfil .csv</button>
+            ) : null}
             <button type="button" onClick={onDownloadBackup}>Baixar backup .json</button>
             <label>
               Restaurar backup
@@ -1024,6 +1031,23 @@ function Observatory() {
     }
   }
 
+  function downloadHistoryTimeline() {
+    if (!audit || !localProgress?.timeline.length) {
+      setHistoryBackupStatus("Ainda não há uma linha do tempo completa para exportar.");
+      return;
+    }
+
+    const exportedAt = new Date().toISOString();
+    downloadTextFile(
+      serializeAuditTimelineCsv(localProgress.timeline),
+      "text/csv;charset=utf-8",
+      auditTimelineCsvFilename(audit.profile.login, exportedAt),
+    );
+    setHistoryBackupStatus(
+      `CSV de @${audit.profile.login} baixado com ${localProgress.timeline.length} ${localProgress.timeline.length === 1 ? "leitura" : "leituras"}.`,
+    );
+  }
+
   async function importHistoryBackup(event: ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget;
     const file = input.files?.[0];
@@ -1330,6 +1354,7 @@ function Observatory() {
               memory={localProgress}
               onClear={clearLocalProgress}
               onDownloadBackup={downloadHistoryBackup}
+              onDownloadTimeline={downloadHistoryTimeline}
               onImportBackup={importHistoryBackup}
               backupStatus={historyBackupStatus}
             />
