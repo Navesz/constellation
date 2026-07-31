@@ -35,7 +35,11 @@ import {
 } from "@/lib/achievement-filters";
 import { auditDataFilename, serializeAuditDataExport } from "@/lib/audit-export";
 import { readAuditApiResponse } from "@/lib/audit-contract";
-import { buildAuditRequestUrl, canPreserveAuditAfterRefresh } from "@/lib/audit-request";
+import {
+  buildAuditRequestUrl,
+  canPreserveAuditAfterRefresh,
+  createAuditRefreshToken,
+} from "@/lib/audit-request";
 import { auditReportFilename, buildAuditMarkdown } from "@/lib/audit-report";
 import { buildAuditEvidenceSources } from "@/lib/audit-sources";
 import { normalizeGitHubLogin } from "@/lib/github-profile";
@@ -633,7 +637,6 @@ function Observatory() {
       try {
         const response = await fetch(buildAuditRequestUrl(routeLogin, refreshToken), {
           signal: controller.signal,
-          cache: refreshToken ? "no-store" : "default",
         });
         const payload = await readAuditApiResponse(
           response,
@@ -719,7 +722,6 @@ function Observatory() {
       try {
         const response = await fetch(buildAuditRequestUrl(activeComparisonLogin, comparisonRefreshKey), {
           signal: controller.signal,
-          cache: comparisonRefreshKey ? "no-store" : "default",
         });
         const payload = await readAuditApiResponse(
           response,
@@ -786,7 +788,7 @@ function Observatory() {
     setRefreshError("");
     setError("");
     setErrorLogin("");
-    setRefreshRequest({ login: routeLogin, token: String(Date.now()) });
+    setRefreshRequest({ login: routeLogin, token: createAuditRefreshToken() });
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -836,7 +838,7 @@ function Observatory() {
     if (comparisonLogin?.toLowerCase() === requestedLogin.toLowerCase()) {
       setComparisonState((current) => current ? { ...current, error: "" } : current);
       setComparisonRefreshing(true);
-      setComparisonRefreshKey(String(Date.now()));
+      setComparisonRefreshKey(createAuditRefreshToken());
       return;
     }
 

@@ -6,6 +6,10 @@ import {
 import { normalizeGitHubLogin, parseVisibleAchievements } from "@/lib/github-profile";
 import { AUDIT_SCHEMA_LINK_HEADER } from "@/lib/audit-schema";
 import {
+  hasSupportedAuditQueryParameters,
+  isValidAuditRefreshToken,
+} from "@/lib/audit-request";
+import {
   GitHubRequestError,
   fetchGitHubWithTimeout,
   formatGitHubRetryAt,
@@ -86,7 +90,20 @@ export function OPTIONS() {
 }
 
 export async function GET(request: Request) {
-  const login = normalizeGitHubLogin(new URL(request.url).searchParams.get("login"));
+  const searchParams = new URL(request.url).searchParams;
+  if (!hasSupportedAuditQueryParameters(searchParams)) {
+    return auditError({ error: "Parâmetros de consulta inválidos." }, 400);
+  }
+
+  const refreshToken = searchParams.get("refresh");
+  if (refreshToken !== null && !isValidAuditRefreshToken(refreshToken)) {
+    return auditError(
+      { error: "Parâmetro de atualização expirado ou inválido. Tente novamente." },
+      400,
+    );
+  }
+
+  const login = normalizeGitHubLogin(searchParams.get("login"));
 
   if (!login) {
     return auditError({ error: "Informe um usuário válido do GitHub." }, 400);
