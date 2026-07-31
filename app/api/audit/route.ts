@@ -3,8 +3,9 @@ import { normalizeGitHubLogin, parseVisibleAchievements } from "@/lib/github-pro
 import {
   GitHubRequestError,
   fetchGitHubWithTimeout,
+  formatGitHubRetryAt,
   githubFailureDiagnostic,
-  githubFailureFromStatus,
+  githubFailureFromResponse,
 } from "@/lib/github-request";
 
 const githubHeaders = {
@@ -38,7 +39,7 @@ type GitHubRepositorySearch = {
 
 async function githubJson<T>(url: string): Promise<T> {
   const response = await fetchGitHubWithTimeout(url, { headers: githubHeaders });
-  if (!response.ok) throw githubFailureFromStatus(response.status);
+  if (!response.ok) throw githubFailureFromResponse(response);
 
   try {
     return await response.json() as T;
@@ -52,7 +53,7 @@ async function githubProfilePage(login: string): Promise<string> {
     headers: { "User-Agent": githubHeaders["User-Agent"] },
   });
 
-  if (!response.ok) throw githubFailureFromStatus(response.status);
+  if (!response.ok) throw githubFailureFromResponse(response);
   try {
     return await response.text();
   } catch (error) {
@@ -61,7 +62,8 @@ async function githubProfilePage(login: string): Promise<string> {
 }
 
 function warningWithDiagnostic(message: string, diagnostic: ReturnType<typeof githubFailureDiagnostic>) {
-  return `${message} Motivo: ${diagnostic.message}.`;
+  const retryLabel = "retryAt" in diagnostic ? formatGitHubRetryAt(diagnostic.retryAt) : null;
+  return `${message} Motivo: ${diagnostic.message}.${retryLabel ? ` Tente novamente após ${retryLabel}.` : ""}`;
 }
 
 export async function GET(request: Request) {
@@ -185,8 +187,14 @@ export async function GET(request: Request) {
       return Response.json({ error: "Perfil não encontrado no GitHub." }, { status: 404 });
     }
     if (diagnostic.reason === "rate-limit") {
+      const retryLabel = "retryAt" in diagnostic ? formatGitHubRetryAt(diagnostic.retryAt) : null;
       return Response.json(
-        { error: "O GitHub limitou novas consultas por alguns minutos. Tente novamente em breve." },
+        {
+          error: retryLabel
+            ? `O GitHub limitou novas consultas. Tente novamente após ${retryLabel}.`
+            : "O GitHub limitou novas consultas por alguns minutos. Tente novamente em breve.",
+          ...("retryAt" in diagnostic ? { retryAt: diagnostic.retryAt } : {}),
+        },
         { status: 429 },
       );
     }

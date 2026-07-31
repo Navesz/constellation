@@ -56,6 +56,10 @@ excedem esse limite preservam uma auditoria parcial com diagnóstico de timeout,
 limite de consultas, rede, resposta inválida ou erro do GitHub. O perfil público
 continua sendo a única fonte obrigatória.
 
+Quando o GitHub informa o fim de um bloqueio temporário, o Constellation
+preserva esse horário no diagnóstico e mostra exatamente quando a consulta pode
+ser repetida. A orientação também acompanha os relatórios Markdown e JSON.
+
 Auditorias completas também formam um histórico local com até 12 estados por
 perfil e oito perfis recentes. Essa memória fica somente no navegador, não é
 incluída nos links compartilhados e pode ser apagada por perfil na interface.

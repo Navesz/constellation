@@ -72,13 +72,20 @@ test("surfaces the structured failure reason when the audit provides one", () =>
     },
     sourceDiagnostics: {
       achievements: { reason: "timeout", message: "tempo limite de 8 segundos excedido" },
-      mergedPullRequests: { reason: "rate-limit", message: "limite temporário de consultas do GitHub" },
+      mergedPullRequests: {
+        reason: "rate-limit",
+        message: "limite temporário de consultas do GitHub",
+        retryAt: "2026-07-31T13:00:00.000Z",
+      },
       repositories: { reason: "network", message: "falha de rede ao consultar o GitHub" },
     },
     visibleAchievementCount: null,
   }));
 
   assert.equal(sources[1].result, "indisponível · tempo limite de 8 segundos excedido");
-  assert.equal(sources[2].result, "indisponível · limite temporário de consultas do GitHub");
+  assert.equal(
+    sources[2].result,
+    "indisponível · limite temporário de consultas do GitHub · tente novamente após 2026-07-31 13:00:00 UTC",
+  );
   assert.equal(sources[3].result, "indisponível · falha de rede ao consultar o GitHub");
 });
