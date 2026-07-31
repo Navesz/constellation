@@ -2,19 +2,24 @@
 
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import {
   AUDIT_HISTORY_STORAGE_KEY,
   MAX_SNAPSHOTS_PER_PROFILE,
   MAX_TRACKED_PROFILES,
   appendAuditSnapshot,
+  auditHistoryBackupFilename,
   buildAuditTimeline,
   compareAuditSnapshots,
+  countAuditHistorySnapshots,
   createAuditSnapshot,
   findComparisonSnapshot,
+  mergeAuditHistories,
   parseAuditHistory,
+  parseAuditHistoryBackup,
   removeProfileHistory,
   serializeAuditHistory,
+  serializeAuditHistoryBackup,
   type AuditChanges,
   type AuditSnapshot,
   type AuditTimelineEntry,
@@ -25,6 +30,7 @@ import { normalizeGitHubLogin } from "@/lib/github-profile";
 import { compareProfiles, comparisonAchievementLabel } from "@/lib/profile-comparison";
 
 const DEFAULT_LOGIN = "Navesz";
+const MAX_HISTORY_BACKUP_BYTES = 512 * 1024;
 
 const achievementGlyphs: Record<string, string> = {
   "pair-extraordinaire": "◇",
@@ -84,6 +90,17 @@ function timelineChangeSummary(changes: AuditChanges | null) {
   }
 
   return signals.length ? signals.join(" · ") : "sem mudança numérica";
+}
+
+function downloadTextFile(contents: string, mimeType: string, filename: string) {
+  const blobUrl = URL.createObjectURL(new Blob([contents], { type: mimeType }));
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
 }
 
 function ProgressBar({ achievement }: { achievement: AchievementProgress }) {
@@ -197,10 +214,16 @@ function ProgressHistory({
   audit,
   memory,
   onClear,
+  onDownloadBackup,
+  onImportBackup,
+  backupStatus,
 }: {
   audit: AuditResponse;
   memory: LocalProgressMemory;
   onClear: () => void;
+  onDownloadBackup: () => void;
+  onImportBackup: (event: ChangeEvent<HTMLInputElement>) => void;
+  backupStatus: string;
 }) {
   const changedSignals = memory.changes
     ? [
@@ -316,6 +339,23 @@ function ProgressHistory({
       ) : null}
       {!memory.recorded && memory.previous && !memory.cleared ? (
         <p className="history-note">Leitura parcial: a linha de base anterior foi preservada.</p>
+      ) : null}
+
+      {memory.storageAvailable ? (
+        <div className="history-backup">
+          <div>
+            <h3>Backup privado</h3>
+            <p>Baixe todas as linhas do tempo deste navegador ou restaure um backup. A restauração valida e mescla os estados; não substitui observações mais recentes.</p>
+          </div>
+          <div className="history-backup-actions">
+            <button type="button" onClick={onDownloadBackup}>Baixar backup .json</button>
+            <label>
+              Restaurar backup
+              <input type="file" accept=".json,application/json" onChange={onImportBackup} />
+            </label>
+          </div>
+          {backupStatus ? <p className="history-backup-status" role="status">{backupStatus}</p> : null}
+        </div>
       ) : null}
     </section>
   );
@@ -435,6 +475,7 @@ function Observatory() {
   const [comparisonState, setComparisonState] = useState<ComparisonRequestState | null>(null);
   const [comparisonFormError, setComparisonFormError] = useState("");
   const [comparisonRefreshKey, setComparisonRefreshKey] = useState(0);
+  const [historyBackupStatus, setHistoryBackupStatus] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -646,14 +687,80 @@ function Observatory() {
       comparison,
       shareUrl: buildShareUrl(comparison?.profile.login).toString(),
     });
-    const blobUrl = URL.createObjectURL(new Blob([markdown], { type: "text/markdown;charset=utf-8" }));
-    const link = document.createElement("a");
-    link.href = blobUrl;
-    link.download = auditReportFilename(audit.profile.login, comparison?.profile.login);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
+    downloadTextFile(
+      markdown,
+      "text/markdown;charset=utf-8",
+      auditReportFilename(audit.profile.login, comparison?.profile.login),
+    );
+  }
+
+  function downloadHistoryBackup() {
+    try {
+      const history = parseAuditHistory(window.localStorage.getItem(AUDIT_HISTORY_STORAGE_KEY));
+      const snapshotCount = countAuditHistorySnapshots(history);
+      if (snapshotCount === 0) {
+        setHistoryBackupStatus("Ainda não há leituras completas para incluir no backup.");
+        return;
+      }
+
+      const exportedAt = new Date().toISOString();
+      downloadTextFile(
+        serializeAuditHistoryBackup(history, exportedAt),
+        "application/json;charset=utf-8",
+        auditHistoryBackupFilename(exportedAt),
+      );
+      setHistoryBackupStatus(
+        `Backup baixado com ${snapshotCount} ${snapshotCount === 1 ? "leitura" : "leituras"}.`,
+      );
+    } catch {
+      setHistoryBackupStatus("Este navegador não permitiu ler o histórico para o backup.");
+    }
+  }
+
+  async function importHistoryBackup(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+
+    if (file.size > MAX_HISTORY_BACKUP_BYTES) {
+      setHistoryBackupStatus("O arquivo excede o limite seguro de 512 KB.");
+      return;
+    }
+
+    try {
+      const backup = parseAuditHistoryBackup(await file.text());
+      if (!backup) {
+        setHistoryBackupStatus("Backup inválido ou incompatível com esta versão do Constellation.");
+        return;
+      }
+
+      const currentHistory = parseAuditHistory(window.localStorage.getItem(AUDIT_HISTORY_STORAGE_KEY));
+      const mergedHistory = mergeAuditHistories(currentHistory, backup.history);
+      window.localStorage.setItem(AUDIT_HISTORY_STORAGE_KEY, serializeAuditHistory(mergedHistory));
+
+      if (audit) {
+        const currentSnapshot = createAuditSnapshot(audit);
+        const previous = findComparisonSnapshot(mergedHistory, currentSnapshot);
+        setLocalProgress({
+          current: currentSnapshot,
+          previous,
+          changes: previous ? compareAuditSnapshots(currentSnapshot, previous) : null,
+          timeline: buildAuditTimeline(mergedHistory, currentSnapshot.login),
+          recorded: currentSnapshot.complete,
+          storageAvailable: true,
+          cleared: false,
+        });
+      }
+
+      const snapshotCount = countAuditHistorySnapshots(mergedHistory);
+      const profileCount = Object.keys(mergedHistory).length;
+      setHistoryBackupStatus(
+        `Backup restaurado: ${snapshotCount} ${snapshotCount === 1 ? "leitura" : "leituras"} em ${profileCount} ${profileCount === 1 ? "perfil" : "perfis"}.`,
+      );
+    } catch {
+      setHistoryBackupStatus("Não foi possível restaurar o backup neste navegador.");
+    }
   }
 
   function clearLocalProgress() {
@@ -884,7 +991,14 @@ function Observatory() {
           ) : null}
 
           {localProgress ? (
-            <ProgressHistory audit={audit} memory={localProgress} onClear={clearLocalProgress} />
+            <ProgressHistory
+              audit={audit}
+              memory={localProgress}
+              onClear={clearLocalProgress}
+              onDownloadBackup={downloadHistoryBackup}
+              onImportBackup={importHistoryBackup}
+              backupStatus={historyBackupStatus}
+            />
           ) : null}
 
           {nextMission ? (

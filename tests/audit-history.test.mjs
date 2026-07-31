@@ -4,13 +4,18 @@ import {
   MAX_SNAPSHOTS_PER_PROFILE,
   MAX_TRACKED_PROFILES,
   appendAuditSnapshot,
+  auditHistoryBackupFilename,
   buildAuditTimeline,
   compareAuditSnapshots,
+  countAuditHistorySnapshots,
   createAuditSnapshot,
   findComparisonSnapshot,
+  mergeAuditHistories,
   parseAuditHistory,
+  parseAuditHistoryBackup,
   removeProfileHistory,
   serializeAuditHistory,
+  serializeAuditHistoryBackup,
 } from "../lib/audit-history.ts";
 
 function audit(overrides = {}) {
@@ -201,4 +206,92 @@ test("recovers safely from malformed storage and removes one profile", () => {
   const parsed = parseAuditHistory(serialized);
   assert.deepEqual(parsed, { octocat: [snapshot] });
   assert.deepEqual(removeProfileHistory(parsed, "@Octocat".replace(/^@/, "")), {});
+});
+
+test("round-trips a versioned backup with a stable filename", () => {
+  const snapshot = createAuditSnapshot(audit());
+  const history = { octocat: [snapshot] };
+  const exportedAt = "2026-08-04T10:20:30.000Z";
+  const serialized = serializeAuditHistoryBackup(history, exportedAt);
+  const backup = parseAuditHistoryBackup(serialized);
+
+  assert.equal(backup?.format, "constellation-audit-history");
+  assert.equal(backup?.version, 1);
+  assert.equal(backup?.exportedAt, exportedAt);
+  assert.deepEqual(backup?.history, history);
+  assert.equal(countAuditHistorySnapshots(backup.history), 1);
+  assert.equal(auditHistoryBackupFilename(exportedAt), "constellation-history-2026-08-04.json");
+  assert.equal(auditHistoryBackupFilename("invalid"), "constellation-history-backup.json");
+  assert.deepEqual(parseAuditHistoryBackup(serializeAuditHistoryBackup({}, exportedAt))?.history, {});
+});
+
+test("rejects malformed, incompatible and internally inconsistent backups", () => {
+  const snapshot = createAuditSnapshot(audit());
+  const valid = JSON.parse(serializeAuditHistoryBackup({ octocat: [snapshot] }));
+
+  assert.equal(parseAuditHistoryBackup("not-json"), null);
+  assert.equal(parseAuditHistoryBackup(JSON.stringify({ ...valid, version: 2 })), null);
+  assert.equal(parseAuditHistoryBackup(JSON.stringify({
+    ...valid,
+    history: { hubot: [snapshot] },
+  })), null);
+  assert.equal(parseAuditHistoryBackup(JSON.stringify({
+    ...valid,
+    history: { octocat: [{ ...snapshot, complete: false }] },
+  })), null);
+  assert.equal(parseAuditHistoryBackup(JSON.stringify({
+    ...valid,
+    history: { octocat: [{ ...snapshot, mergedPullRequests: null }] },
+  })), null);
+  assert.equal(parseAuditHistoryBackup(JSON.stringify({
+    ...valid,
+    history: { "not a login": [{ ...snapshot, login: "not a login" }] },
+  })), null);
+});
+
+test("merges backups chronologically without duplicating shared observations", () => {
+  const baseline = createAuditSnapshot(audit());
+  const newer = createAuditSnapshot(audit({
+    metrics: { mergedPullRequests: 15, topRepository: { stars: 8 } },
+    generatedAt: "2026-08-03T00:00:00.000Z",
+  }));
+  const importedMiddle = createAuditSnapshot(audit({
+    metrics: { mergedPullRequests: 14, topRepository: { stars: 7 } },
+    generatedAt: "2026-08-02T00:00:00.000Z",
+  }));
+
+  const merged = mergeAuditHistories(
+    { octocat: [baseline, newer] },
+    { octocat: [baseline, importedMiddle] },
+  );
+
+  assert.deepEqual(
+    merged.octocat.map((snapshot) => snapshot.capturedAt),
+    [baseline.capturedAt, importedMiddle.capturedAt, newer.capturedAt],
+  );
+  assert.equal(countAuditHistorySnapshots(merged), 3);
+});
+
+test("reapplies profile and snapshot retention limits while merging", () => {
+  const imported = {};
+
+  for (let profile = 0; profile < MAX_TRACKED_PROFILES + 2; profile += 1) {
+    const login = `user-${profile}`;
+    imported[login] = [];
+    for (let snapshot = 0; snapshot < MAX_SNAPSHOTS_PER_PROFILE + 2; snapshot += 1) {
+      imported[login].push(createAuditSnapshot(audit({
+        profile: { login, publicRepos: profile },
+        metrics: { mergedPullRequests: snapshot, topRepository: { stars: profile } },
+        generatedAt: new Date(Date.UTC(2026, 7, profile * 20 + snapshot + 1)).toISOString(),
+      })));
+    }
+  }
+
+  const merged = mergeAuditHistories({}, imported);
+  assert.equal(Object.keys(merged).length, MAX_TRACKED_PROFILES);
+  assert.ok(Object.values(merged).every((snapshots) => snapshots.length <= MAX_SNAPSHOTS_PER_PROFILE));
+
+  const reparsed = parseAuditHistory(JSON.stringify(imported));
+  assert.equal(Object.keys(reparsed).length, MAX_TRACKED_PROFILES);
+  assert.equal(`user-${MAX_TRACKED_PROFILES + 1}` in reparsed, true);
 });

@@ -891,6 +891,81 @@ footer {
   font-size: 0.64rem;
 }
 
+.history-backup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px 32px;
+  align-items: end;
+  margin-top: 30px;
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+}
+
+.history-backup h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.history-backup p {
+  max-width: 720px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.55;
+}
+
+.history-backup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.history-backup-actions button,
+.history-backup-actions label {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--ink);
+  padding: 0 12px;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.history-backup-actions label {
+  border-color: var(--line-strong);
+}
+
+.history-backup-actions button:hover,
+.history-backup-actions label:hover,
+.history-backup-actions label:focus-within {
+  color: var(--paper-bright);
+  background: var(--ink);
+}
+
+.history-backup-actions input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.history-backup .history-backup-status {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--signal-dark);
+  font-family: var(--mono);
+  font-size: 0.64rem;
+}
+
 .history-timeline {
   margin-top: 36px;
   border-top: 1px solid var(--ink);
@@ -1406,6 +1481,7 @@ footer {
   .comparison-control,
   .comparison-heading,
   .history-heading,
+  .history-backup,
   .section-heading {
     grid-template-columns: 1fr;
   }
@@ -1441,6 +1517,10 @@ footer {
 
   .history-signal-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .history-backup-actions {
+    justify-content: flex-start;
   }
 
   .achievement-grid {
