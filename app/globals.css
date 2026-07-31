@@ -344,6 +344,135 @@ footer {
   gap: 13px;
 }
 
+.recent-orbits {
+  margin-top: 24px;
+  border: 1px solid var(--line);
+  padding: clamp(22px, 3vw, 34px);
+  background: rgba(255, 250, 240, 0.72);
+}
+
+.recent-orbits-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.7fr);
+  gap: 36px;
+  align-items: end;
+}
+
+.recent-orbits-heading h2 {
+  margin: 9px 0 0;
+  font-size: clamp(1.7rem, 3vw, 2.7rem);
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.recent-orbits-heading > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.recent-orbits ul {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin: 24px 0 0;
+  padding: 1px;
+  list-style: none;
+  background: var(--line);
+}
+
+.recent-orbits li {
+  min-width: 0;
+  background: var(--paper-bright);
+}
+
+.recent-orbits a {
+  min-height: 172px;
+  display: flex;
+  flex-direction: column;
+  padding: 18px;
+  color: var(--ink);
+  text-decoration: none;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.recent-orbits a:hover,
+.recent-orbits a:focus-visible {
+  color: var(--paper-bright);
+  background: var(--night);
+}
+
+.recent-orbits a.is-current {
+  box-shadow: inset 0 4px 0 var(--acid);
+}
+
+.recent-orbit-identity {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.recent-orbit-identity strong {
+  overflow: hidden;
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-orbit-identity small,
+.recent-orbit-date {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.recent-orbits a:hover .recent-orbit-identity small,
+.recent-orbits a:hover .recent-orbit-date,
+.recent-orbits a:focus-visible .recent-orbit-identity small,
+.recent-orbits a:focus-visible .recent-orbit-date {
+  color: rgba(255, 250, 240, 0.7);
+}
+
+.recent-orbit-date {
+  margin-top: 8px;
+}
+
+.recent-orbit-signals {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 20px;
+}
+
+.recent-orbit-signals span {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.52rem;
+  text-transform: uppercase;
+}
+
+.recent-orbit-signals strong {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--ink);
+  font-size: 0.78rem;
+}
+
+.recent-orbits a:hover .recent-orbit-signals span,
+.recent-orbits a:focus-visible .recent-orbit-signals span {
+  color: rgba(255, 250, 240, 0.6);
+}
+
+.recent-orbits a:hover .recent-orbit-signals strong,
+.recent-orbits a:focus-visible .recent-orbit-signals strong {
+  color: var(--acid);
+}
+
 .profile-actions {
   display: flex;
   justify-content: flex-end;
@@ -1478,6 +1607,7 @@ footer {
   .hero,
   .profile-strip,
   .data-warning,
+  .recent-orbits-heading,
   .comparison-control,
   .comparison-heading,
   .history-heading,
@@ -1513,6 +1643,10 @@ footer {
 
   .metric-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .recent-orbits ul {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .history-signal-grid {
@@ -1555,6 +1689,10 @@ footer {
   }
 
   .metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .recent-orbits ul {
     grid-template-columns: 1fr;
   }
 

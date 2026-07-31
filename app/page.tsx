@@ -14,6 +14,7 @@ import {
   countAuditHistorySnapshots,
   createAuditSnapshot,
   findComparisonSnapshot,
+  listRecentAuditProfiles,
   mergeAuditHistories,
   parseAuditHistory,
   parseAuditHistoryBackup,
@@ -23,6 +24,7 @@ import {
   type AuditChanges,
   type AuditSnapshot,
   type AuditTimelineEntry,
+  type RecentAuditProfile,
 } from "@/lib/audit-history";
 import { selectNextMission, type AchievementProgress, type AuditResponse } from "@/lib/achievements";
 import { auditReportFilename, buildAuditMarkdown } from "@/lib/audit-report";
@@ -101,6 +103,64 @@ function downloadTextFile(contents: string, mimeType: string, filename: string) 
   link.click();
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
+}
+
+function RecentOrbits({
+  profiles,
+  currentLogin,
+}: {
+  profiles: RecentAuditProfile[];
+  currentLogin: string;
+}) {
+  if (profiles.length < 2) return null;
+
+  const observedDate = new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+
+  return (
+    <section className="recent-orbits" aria-labelledby="recent-orbits-title">
+      <div className="recent-orbits-heading">
+        <div>
+          <p className="eyebrow">órbitas recentes</p>
+          <h2 id="recent-orbits-title">Volte ao que já observou.</h2>
+        </div>
+        <p>Atalhos criados somente a partir da memória local deste navegador. Abrir um perfil faz uma nova leitura pública.</p>
+      </div>
+      <ul>
+        {profiles.map((profile) => {
+          const isCurrent = profile.login.toLowerCase() === currentLogin.toLowerCase();
+          return (
+            <li key={profile.login.toLowerCase()}>
+              <a
+                className={isCurrent ? "is-current" : undefined}
+                href={`/?login=${encodeURIComponent(profile.login)}`}
+                aria-current={isCurrent ? "page" : undefined}
+              >
+                <span className="recent-orbit-identity">
+                  <strong>@{profile.login}</strong>
+                  <small>
+                    {isCurrent ? "perfil atual · " : ""}
+                    {profile.observationCount} {profile.observationCount === 1 ? "leitura" : "leituras"}
+                  </small>
+                </span>
+                <span className="recent-orbit-date">
+                  observado em <time dateTime={profile.lastObservedAt}>{observedDate.format(new Date(profile.lastObservedAt))}</time>
+                </span>
+                <span className="recent-orbit-signals" aria-label={`Últimos sinais de ${profile.login}`}>
+                  <span><strong>{timelineMetric(profile.visibleAchievementCount)}</strong> selos</span>
+                  <span><strong>{timelineMetric(profile.mergedPullRequests)}</strong> PRs</span>
+                  <span><strong>{timelineMetric(profile.topRepositoryStars)}</strong> estrelas</span>
+                  <span><strong>{timelineMetric(profile.publicRepositories)}</strong> repos</span>
+                </span>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
 }
 
 function ProgressBar({ achievement }: { achievement: AchievementProgress }) {
@@ -476,6 +536,7 @@ function Observatory() {
   const [comparisonFormError, setComparisonFormError] = useState("");
   const [comparisonRefreshKey, setComparisonRefreshKey] = useState(0);
   const [historyBackupStatus, setHistoryBackupStatus] = useState("");
+  const [recentProfiles, setRecentProfiles] = useState<RecentAuditProfile[]>([]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -504,6 +565,8 @@ function Observatory() {
             window.localStorage.setItem(AUDIT_HISTORY_STORAGE_KEY, serializeAuditHistory(nextHistory));
           }
 
+          setRecentProfiles(listRecentAuditProfiles(nextHistory));
+
           setLocalProgress({
             current: currentSnapshot,
             previous,
@@ -514,6 +577,7 @@ function Observatory() {
             cleared: false,
           });
         } catch {
+          setRecentProfiles([]);
           setLocalProgress({
             current: currentSnapshot,
             previous: null,
@@ -738,6 +802,7 @@ function Observatory() {
       const currentHistory = parseAuditHistory(window.localStorage.getItem(AUDIT_HISTORY_STORAGE_KEY));
       const mergedHistory = mergeAuditHistories(currentHistory, backup.history);
       window.localStorage.setItem(AUDIT_HISTORY_STORAGE_KEY, serializeAuditHistory(mergedHistory));
+      setRecentProfiles(listRecentAuditProfiles(mergedHistory));
 
       if (audit) {
         const currentSnapshot = createAuditSnapshot(audit);
@@ -775,6 +840,7 @@ function Observatory() {
       } else {
         window.localStorage.removeItem(AUDIT_HISTORY_STORAGE_KEY);
       }
+      setRecentProfiles(listRecentAuditProfiles(nextHistory));
 
       setLocalProgress({
         ...localProgress,
@@ -909,6 +975,8 @@ function Observatory() {
               </div>
             </div>
           </section>
+
+          <RecentOrbits profiles={recentProfiles} currentLogin={audit.profile.login} />
 
           <section className="comparison-control" aria-labelledby="comparison-control-title">
             <div>

@@ -10,6 +10,7 @@ import {
   countAuditHistorySnapshots,
   createAuditSnapshot,
   findComparisonSnapshot,
+  listRecentAuditProfiles,
   mergeAuditHistories,
   parseAuditHistory,
   parseAuditHistoryBackup,
@@ -294,4 +295,46 @@ test("reapplies profile and snapshot retention limits while merging", () => {
   const reparsed = parseAuditHistory(JSON.stringify(imported));
   assert.equal(Object.keys(reparsed).length, MAX_TRACKED_PROFILES);
   assert.equal(`user-${MAX_TRACKED_PROFILES + 1}` in reparsed, true);
+});
+
+test("lists recent profiles by their latest complete observation", () => {
+  const octocatBaseline = createAuditSnapshot(audit());
+  const octocatLatest = createAuditSnapshot(audit({
+    metrics: { mergedPullRequests: 18, topRepository: { stars: 9 } },
+    visibleAchievementCount: 3,
+    generatedAt: "2026-08-04T00:00:00.000Z",
+  }));
+  const hubotLatest = createAuditSnapshot(audit({
+    profile: { login: "hubot", publicRepos: 14 },
+    metrics: { mergedPullRequests: 7, topRepository: { stars: 21 } },
+    visibleAchievementCount: 1,
+    generatedAt: "2026-08-03T00:00:00.000Z",
+  }));
+  const partialOnly = createAuditSnapshot(audit({
+    profile: { login: "monalisa", publicRepos: 4 },
+    sources: {
+      achievements: "unavailable",
+      mergedPullRequests: "available",
+      repositories: "available",
+    },
+    visibleAchievementCount: null,
+    generatedAt: "2026-08-05T00:00:00.000Z",
+  }));
+
+  const profiles = listRecentAuditProfiles({
+    octocat: [octocatLatest, octocatBaseline],
+    hubot: [hubotLatest],
+    monalisa: [partialOnly],
+  });
+
+  assert.deepEqual(profiles.map((profile) => profile.login), ["octocat", "hubot"]);
+  assert.deepEqual(profiles[0], {
+    login: "octocat",
+    lastObservedAt: octocatLatest.capturedAt,
+    observationCount: 2,
+    visibleAchievementCount: 3,
+    mergedPullRequests: 18,
+    topRepositoryStars: 9,
+    publicRepositories: 8,
+  });
 });

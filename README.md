@@ -39,6 +39,10 @@ Leituras parciais nunca substituem uma linha de base completa. A linha do tempo
 mostra todas as observações distintas, seus quatro sinais e a mudança desde o
 estado anterior.
 
+Quando existem pelo menos dois perfis nessa memória, o painel mostra órbitas
+recentes ordenadas pela última observação, com um resumo dos quatro sinais e
+acesso direto para remapear cada login.
+
 Essa memória também pode ser baixada explicitamente como um backup JSON e
 restaurada em outro navegador. A importação valida o formato, mescla estados
 sem apagar observações mais recentes e reaplica os mesmos limites de retenção.
