@@ -9,6 +9,10 @@ combina dados da API pública com as conquistas visíveis no perfil para mostrar
 - repositório autoral com mais estrelas;
 - uma próxima ação legítima, sem incentivar spam.
 
+Cada auditoria tem uma URL compartilhável no formato `/?login=octocat`. O
+painel também separa contagens medidas pela API de mínimos confirmados pelo
+nível do selo, para não apresentar estimativas como valores exatos.
+
 ## Desenvolvimento
 
 ```bash
@@ -16,7 +20,8 @@ npm install
 npm run dev
 ```
 
-Acesse `http://localhost:3000`.
+Acesse `http://localhost:3000` ou abra diretamente um perfil com
+`http://localhost:3000/?login=octocat`.
 
 ## Verificação
 

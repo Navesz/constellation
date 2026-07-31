@@ -1,4 +1,5 @@
-import { buildAchievementProgress, type VisibleAchievement } from "@/lib/achievements";
+import { buildAchievementProgress } from "@/lib/achievements";
+import { parseVisibleAchievements } from "@/lib/github-profile";
 
 const githubHeaders = {
   Accept: "application/vnd.github+json",
@@ -25,26 +26,6 @@ type GitHubRepository = {
   html_url: string;
   fork: boolean;
 };
-
-function parseVisibleAchievements(html: string): VisibleAchievement[] {
-  const bySlug = new Map<string, VisibleAchievement>();
-  const achievementLink = /<a[^>]+href="\/[^"]+\?achievement=([^&"]+)&amp;tab=achievements"[^>]*>([\s\S]*?)<\/a>/g;
-
-  for (const match of html.matchAll(achievementLink)) {
-    const slug = match[1];
-    const content = match[2];
-    const name = content.match(/alt="Achievement: ([^"]+)"/)?.[1];
-    if (!name) continue;
-
-    const tier = Number(content.match(/>x(\d+)</)?.[1] ?? 1);
-    const current = bySlug.get(slug);
-    if (!current || tier > current.tier) {
-      bySlug.set(slug, { slug, name, tier });
-    }
-  }
-
-  return [...bySlug.values()];
-}
 
 async function githubJson<T>(url: string): Promise<T> {
   const response = await fetch(url, { headers: githubHeaders });

@@ -1,10 +1,12 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import type { AchievementProgress, AuditResponse } from "@/lib/achievements";
 
 const DEFAULT_LOGIN = "Navesz";
+const LOGIN_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
 
 const achievementGlyphs: Record<string, string> = {
   "pair-extraordinaire": "◇",
@@ -18,6 +20,11 @@ const achievementGlyphs: Record<string, string> = {
 
 function compactNumber(value: number) {
   return new Intl.NumberFormat("pt-BR", { notation: "compact" }).format(value);
+}
+
+function normalizedLogin(value: string | null) {
+  const normalized = value?.trim().replace(/^@/, "") ?? "";
+  return LOGIN_PATTERN.test(normalized) ? normalized : DEFAULT_LOGIN;
 }
 
 function ProgressBar({ achievement }: { achievement: AchievementProgress }) {
@@ -47,6 +54,9 @@ function AchievementCard({ achievement }: { achievement: AchievementProgress }) 
       </div>
       <h3>{achievement.name}</h3>
       <p>{achievement.description}</p>
+      <span className={`confidence confidence-${achievement.measurementKind}`}>
+        {achievement.confidenceLabel}
+      </span>
       <ProgressBar achievement={achievement} />
       <div className="achievement-footer">
         <span>{achievement.progressLabel}</span>
@@ -56,20 +66,22 @@ function AchievementCard({ achievement }: { achievement: AchievementProgress }) 
   );
 }
 
-export default function Home() {
-  const [login, setLogin] = useState(DEFAULT_LOGIN);
-  const [activeLogin, setActiveLogin] = useState(DEFAULT_LOGIN);
+function Observatory() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const routeLogin = normalizedLogin(searchParams.get("login"));
   const [audit, setAudit] = useState<AuditResponse | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
 
     async function loadAudit() {
       try {
-        const response = await fetch(`/api/audit?login=${encodeURIComponent(activeLogin)}`, {
+        const response = await fetch(`/api/audit?login=${encodeURIComponent(routeLogin)}`, {
           signal: controller.signal,
         });
         const payload = (await response.json()) as AuditResponse & { error?: string };
@@ -79,6 +91,7 @@ export default function Home() {
         }
 
         setAudit(payload);
+        setError("");
       } catch (caught) {
         if (caught instanceof DOMException && caught.name === "AbortError") return;
         setAudit(null);
@@ -90,27 +103,52 @@ export default function Home() {
 
     void loadAudit();
     return () => controller.abort();
-  }, [activeLogin, refreshKey]);
+  }, [routeLogin, refreshKey]);
 
   const nextMission = useMemo(() => {
     if (!audit) return null;
     return [...audit.achievements]
       .filter((achievement) => achievement.nextThreshold)
       .sort((a, b) => {
-        const aRemaining = (a.nextThreshold ?? a.current) - a.current;
-        const bRemaining = (b.nextThreshold ?? b.current) - b.current;
+        const aRemaining = Math.max(0, (a.nextThreshold ?? a.current) - a.current);
+        const bRemaining = Math.max(0, (b.nextThreshold ?? b.current) - b.current);
         return aRemaining - bRemaining;
       })[0];
   }, [audit]);
 
+  const routeIsPending = Boolean(
+    audit && audit.profile.login.toLowerCase() !== routeLogin.toLowerCase(),
+  );
+  const showLoading = loading || routeIsPending;
+
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const normalized = login.trim().replace(/^@/, "");
-    if (normalized) {
-      setLoading(true);
-      setError("");
-      setActiveLogin(normalized);
+    const formData = new FormData(event.currentTarget);
+    const requestedLogin = normalizedLogin(String(formData.get("login") ?? ""));
+
+    setLoading(true);
+    setAudit(null);
+    setError("");
+    setCopied(false);
+
+    if (requestedLogin === routeLogin) {
       setRefreshKey((current) => current + 1);
+      return;
+    }
+
+    router.push(`/?login=${encodeURIComponent(requestedLogin)}`, { scroll: false });
+  }
+
+  async function copyShareLink() {
+    const shareUrl = new URL(window.location.href);
+    shareUrl.searchParams.set("login", audit?.profile.login ?? routeLogin);
+
+    try {
+      await navigator.clipboard.writeText(shareUrl.toString());
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2400);
+    } catch {
+      setCopied(false);
     }
   }
 
@@ -149,15 +187,16 @@ export default function Home() {
           <div className="search-row">
             <span aria-hidden="true">@</span>
             <input
+              key={routeLogin}
               id="github-login"
-              value={login}
-              onChange={(event) => setLogin(event.target.value)}
+              name="login"
+              defaultValue={routeLogin}
               placeholder="octocat"
               autoComplete="off"
               spellCheck={false}
             />
-            <button type="submit" disabled={loading}>
-              {loading ? "Mapeando…" : "Mapear perfil"}
+            <button type="submit" disabled={showLoading}>
+              {showLoading ? "Mapeando…" : "Mapear perfil"}
             </button>
           </div>
           <p>Somente dados públicos. Nenhum token é enviado pelo navegador.</p>
@@ -174,7 +213,7 @@ export default function Home() {
         </section>
       ) : null}
 
-      {loading && !audit ? (
+      {showLoading && !audit ? (
         <section className="loading-grid" aria-label="Carregando auditoria" aria-live="polite">
           <div /><div /><div /><div />
         </section>
@@ -194,9 +233,14 @@ export default function Home() {
               </div>
             </div>
             <p className="profile-bio">{audit.profile.bio || "Perfil sem bio pública."}</p>
-            <div className="profile-meta">
-              <span><strong>{compactNumber(audit.profile.followers)}</strong> seguidores</span>
-              <span><strong>{compactNumber(audit.profile.publicRepos)}</strong> repositórios</span>
+            <div className="profile-side">
+              <div className="profile-meta">
+                <span><strong>{compactNumber(audit.profile.followers)}</strong> seguidores</span>
+                <span><strong>{compactNumber(audit.profile.publicRepos)}</strong> repositórios</span>
+              </div>
+              <button className="share-button" type="button" onClick={copyShareLink}>
+                {copied ? "Link copiado" : "Copiar auditoria"}
+              </button>
             </div>
           </section>
 
@@ -229,9 +273,13 @@ export default function Home() {
                 <p className="kicker"><span /> próxima missão</p>
                 <h2>{nextMission.name}</h2>
                 <p>{nextMission.nextAction}</p>
+                <span className="mission-confidence">{nextMission.confidenceLabel}</span>
               </div>
               <div className="mission-number" aria-label={nextMission.progressLabel}>
-                <strong>{nextMission.current}</strong>
+                <strong>
+                  {nextMission.current}
+                  {nextMission.currentIsMinimum ? <small>+</small> : null}
+                </strong>
                 <span>/ {nextMission.nextThreshold}</span>
               </div>
             </section>
@@ -242,8 +290,14 @@ export default function Home() {
               <p className="eyebrow">mapa de conquistas</p>
               <h2>Progresso, não teatro.</h2>
             </div>
-            <p>Os níveis sem contador público usam o menor valor confirmado pelo selo atual.</p>
+            <p>Agora cada número declara se foi medido ou apenas confirmado como valor mínimo pelo selo.</p>
           </section>
+
+          <aside className="trust-legend" aria-label="Legenda de confiabilidade dos dados">
+            <span><i className="legend-measured" /> medido com dados públicos</span>
+            <span><i className="legend-minimum" /> mínimo confirmado pelo selo</span>
+            <span><i className="legend-private" /> contador não é público</span>
+          </aside>
 
           <section className="achievement-grid">
             {audit.achievements.map((achievement) => (
@@ -263,6 +317,14 @@ export default function Home() {
               </a>
             ) : null}
           </section>
+
+          <p className="freshness">
+            Auditoria gerada em <time dateTime={audit.generatedAt}>
+              {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(
+                new Date(audit.generatedAt),
+              )}
+            </time>.
+          </p>
         </div>
       ) : null}
 
@@ -271,5 +333,26 @@ export default function Home() {
         <span>Dados podem levar alguns minutos para refletir mudanças no GitHub.</span>
       </footer>
     </main>
+  );
+}
+
+function PageFallback() {
+  return (
+    <main>
+      <nav className="site-nav">
+        <span className="brand"><span className="brand-mark">✦</span> Constellation</span>
+      </nav>
+      <section className="loading-grid page-fallback" aria-label="Preparando observatório" aria-live="polite">
+        <div /><div /><div /><div />
+      </section>
+    </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <Observatory />
+    </Suspense>
   );
 }

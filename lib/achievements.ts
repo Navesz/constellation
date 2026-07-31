@@ -19,6 +19,9 @@ export type AchievementProgress = AchievementDefinition & {
   current: number;
   nextThreshold: number | null;
   progressLabel: string;
+  measurementKind: "measured" | "confirmed-minimum" | "not-public";
+  currentIsMinimum: boolean;
+  confidenceLabel: string;
 };
 
 export type AuditResponse = {
@@ -114,10 +117,30 @@ export function buildAchievementProgress(
       ? definition.thresholds[Math.min(visible.tier, definition.thresholds.length) - 1]
       : 0;
     const current = Math.max(measuredCurrent ?? 0, tierFloor ?? 0);
-    const tierFromMetric = definition.thresholds.filter((threshold) => current >= threshold).length;
-    const tier = Math.max(visible?.tier ?? 0, tierFromMetric);
-    const unlocked = Boolean(visible) || tier > 0;
-    const nextThreshold = definition.thresholds.find((threshold) => threshold > current) ?? null;
+    const tier = visible?.tier ?? 0;
+    const unlocked = Boolean(visible);
+    const nextThreshold = unlocked
+      ? definition.thresholds[tier] ?? null
+      : definition.thresholds[0] ?? null;
+    const currentIsMinimum = Boolean(visible) && (measuredCurrent === undefined || tierFloor > measuredCurrent);
+    const measurementKind = currentIsMinimum
+      ? "confirmed-minimum"
+      : measuredCurrent !== undefined
+        ? "measured"
+        : "not-public";
+    const confidenceLabel =
+      measurementKind === "confirmed-minimum"
+        ? "mínimo confirmado pelo selo"
+        : measurementKind === "measured"
+          ? "medido com dados públicos"
+          : unlocked
+            ? "desbloqueio confirmado; contador privado"
+            : "contador não é público";
+    const progressLabel = nextThreshold
+      ? `${currentIsMinimum ? "pelo menos " : ""}${current} de ${nextThreshold}`
+      : unlocked
+        ? "marco concluído"
+        : "sem marco público";
 
     return {
       ...definition,
@@ -125,7 +148,10 @@ export function buildAchievementProgress(
       tier,
       current,
       nextThreshold,
-      progressLabel: nextThreshold ? `${current} de ${nextThreshold}` : unlocked ? "marco concluído" : "0 de 1",
+      progressLabel,
+      measurementKind,
+      currentIsMinimum,
+      confidenceLabel,
     };
   });
 }
