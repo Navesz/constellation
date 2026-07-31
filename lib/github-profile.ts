@@ -11,6 +11,17 @@ export function normalizeGitHubLogin(value: string | null | undefined) {
   return GITHUB_LOGIN_PATTERN.test(normalized) ? normalized : null;
 }
 
+export function githubAchievementDetailUrl(login: string, slug: string) {
+  const normalizedLogin = normalizeGitHubLogin(login);
+  const normalizedSlug = slug.trim().toLowerCase();
+  if (!normalizedLogin || !/^[a-z0-9-]+$/.test(normalizedSlug)) return null;
+
+  const url = new URL(`https://github.com/${normalizedLogin}`);
+  url.searchParams.set("achievement", normalizedSlug);
+  url.searchParams.set("tab", "achievements");
+  return url.toString();
+}
+
 export function parseVisibleAchievements(html: string): ParsedAchievement[] {
   const bySlug = new Map<string, ParsedAchievement>();
   const achievementLink =

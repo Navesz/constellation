@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildAchievementProgress, selectNextMission } from "../lib/achievements.ts";
-import { normalizeGitHubLogin, parseVisibleAchievements } from "../lib/github-profile.ts";
+import {
+  githubAchievementDetailUrl,
+  normalizeGitHubLogin,
+  parseVisibleAchievements,
+} from "../lib/github-profile.ts";
 
 test("normalizes valid GitHub logins and rejects malformed values", () => {
   assert.equal(normalizeGitHubLogin("  @octocat  "), "octocat");
@@ -9,6 +13,15 @@ test("normalizes valid GitHub logins and rejects malformed values", () => {
   assert.equal(normalizeGitHubLogin("-invalid"), null);
   assert.equal(normalizeGitHubLogin("invalid-"), null);
   assert.equal(normalizeGitHubLogin("a".repeat(40)), null);
+});
+
+test("builds safe GitHub detail links for visible achievements", () => {
+  assert.equal(
+    githubAchievementDetailUrl("Navesz", "Pull-Shark"),
+    "https://github.com/Navesz?achievement=pull-shark&tab=achievements",
+  );
+  assert.equal(githubAchievementDetailUrl("not a login", "pull-shark"), null);
+  assert.equal(githubAchievementDetailUrl("octocat", "pull-shark/escape"), null);
 });
 
 test("parses achievement tiers and keeps the highest duplicate tier", () => {
