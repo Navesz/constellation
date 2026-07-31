@@ -1,3 +1,5 @@
+import type { AchievementProgress } from "./achievements";
+
 export type ComparisonMetricId =
   | "visibleAchievements"
   | "mergedPullRequests"
@@ -16,9 +18,10 @@ export type ComparisonMetric = {
 export type ComparisonAchievementState = {
   unlocked: boolean;
   tier: number;
-  current: number;
+  current: number | null;
   nextThreshold: number | null;
   badgeStatus: "visible" | "not-visible" | "unavailable";
+  measurementKind: AchievementProgress["measurementKind"];
 };
 
 export type ComparisonAchievement = {
@@ -53,9 +56,10 @@ type ComparableAudit = {
     name: string;
     unlocked: boolean;
     tier: number;
-    current: number;
+    current: number | null;
     nextThreshold: number | null;
     badgeStatus: "visible" | "not-visible" | "unavailable";
+    measurementKind: AchievementProgress["measurementKind"];
   }>;
 };
 
@@ -88,14 +92,27 @@ function achievementState(
         current: achievement.current,
         nextThreshold: achievement.nextThreshold,
         badgeStatus: achievement.badgeStatus,
+        measurementKind: achievement.measurementKind,
       }
     : {
         unlocked: false,
         tier: 0,
-        current: 0,
+        current: null,
         nextThreshold: null,
         badgeStatus: "unavailable",
+        measurementKind: "unavailable",
       };
+}
+
+export function comparisonAchievementLabel(state: ComparisonAchievementState) {
+  if (state.badgeStatus === "unavailable") return "Fonte indisponível";
+  if (state.unlocked) return `Nível ${state.tier}`;
+  if (state.measurementKind === "not-public" || state.current === null) {
+    return "Progresso não público";
+  }
+  if (state.nextThreshold) return `${state.current} de ${state.nextThreshold}`;
+  if (state.measurementKind === "measured") return `${state.current} medidos; selo não visível`;
+  return "Não visível";
 }
 
 export function compareProfiles(primary: ComparableAudit, secondary: ComparableAudit): ProfileComparison {

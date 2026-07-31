@@ -17,6 +17,11 @@ Cada auditoria tem uma URL compartilhável no formato `/?login=octocat`. O
 painel também separa contagens medidas pela API de mínimos confirmados pelo
 nível do selo, para não apresentar estimativas como valores exatos.
 
+Como o GitHub permite ocultar todas as conquistas ou somente um selo, a ausência
+de um badge público nunca é tratada como contador zero. Nesses casos, cartões e
+comparações mostram progresso não público, e a próxima missão considera apenas
+sinais medidos ou mínimos efetivamente confirmados.
+
 O perfil público é a única fonte obrigatória. Se a busca de pull requests, a
 lista de repositórios ou a leitura dos selos falhar temporariamente, a auditoria
 continua com os dados disponíveis e identifica cada lacuna em vez de exibir

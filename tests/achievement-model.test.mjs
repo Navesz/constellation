@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAchievementProgress } from "../lib/achievements.ts";
+import { buildAchievementProgress, selectNextMission } from "../lib/achievements.ts";
 import { normalizeGitHubLogin, parseVisibleAchievements } from "../lib/github-profile.ts";
 
 test("normalizes valid GitHub logins and rejects malformed values", () => {
@@ -57,6 +57,29 @@ test("keeps public repository stars as a measured signal", () => {
   assert.equal(starstruck.progressLabel, "7 de 16");
 });
 
+test("keeps private badge progress unknown and out of the next mission", () => {
+  const progress = buildAchievementProgress([], {
+    mergedPullRequests: 3,
+    topRepositoryStars: 0,
+  });
+
+  const quickdraw = progress.find((item) => item.slug === "quickdraw");
+  assert.equal(quickdraw.current, null);
+  assert.equal(quickdraw.nextThreshold, 1);
+  assert.equal(quickdraw.measurementKind, "not-public");
+  assert.equal(quickdraw.progressLabel, "progresso não público");
+
+  const mission = selectNextMission(progress);
+  assert.equal(mission?.slug, "pull-shark");
+  assert.equal(mission?.current, 3);
+  assert.equal(mission?.nextThreshold, 16);
+});
+
+test("returns no mission when every available counter is private", () => {
+  const progress = buildAchievementProgress([], {});
+  assert.equal(selectNextMission(progress), null);
+});
+
 test("marks badge-only progress as unknown when the achievement scan is unavailable", () => {
   const progress = buildAchievementProgress(
     [],
@@ -99,6 +122,7 @@ test("includes visible historical or newly released achievements outside the mod
   assert.equal(discovered.catalogStatus, "discovered");
   assert.equal(discovered.unlocked, true);
   assert.equal(discovered.tier, 1);
+  assert.equal(discovered.current, null);
   assert.equal(discovered.nextThreshold, null);
   assert.equal(discovered.measurementKind, "not-public");
   assert.equal(discovered.currentIsMinimum, false);

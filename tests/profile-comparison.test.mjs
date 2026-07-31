@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { compareProfiles } from "../lib/profile-comparison.ts";
+import { compareProfiles, comparisonAchievementLabel } from "../lib/profile-comparison.ts";
 
 function achievement(slug, unlocked, overrides = {}) {
   return {
@@ -11,6 +11,7 @@ function achievement(slug, unlocked, overrides = {}) {
     current: unlocked ? 2 : 0,
     nextThreshold: unlocked ? 16 : 1,
     badgeStatus: unlocked ? "visible" : "not-visible",
+    measurementKind: unlocked ? "confirmed-minimum" : "not-public",
     ...overrides,
   };
 }
@@ -87,4 +88,16 @@ test("summarizes shared and profile-exclusive visible achievements", () => {
   assert.deepEqual(comparison.primaryOnlyUnlocked, ["pull-shark"]);
   assert.deepEqual(comparison.secondaryOnlyUnlocked, ["starstruck"]);
   assert.equal(comparison.achievements.length, 3);
+});
+
+test("does not format a private achievement counter as zero progress", () => {
+  const comparison = compareProfiles(
+    audit({ achievements: [achievement("quickdraw", false, { current: null })] }),
+    audit({ achievements: [achievement("quickdraw", false, { current: null })] }),
+  );
+
+  const quickdraw = comparison.achievements.find((item) => item.slug === "quickdraw");
+  assert.equal(quickdraw.primary.current, null);
+  assert.equal(quickdraw.primary.measurementKind, "not-public");
+  assert.equal(comparisonAchievementLabel(quickdraw.primary), "Progresso não público");
 });

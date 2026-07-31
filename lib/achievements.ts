@@ -20,7 +20,7 @@ type CatalogedAchievementDefinition = AchievementDefinition & {
 export type AchievementProgress = CatalogedAchievementDefinition & {
   unlocked: boolean;
   tier: number;
-  current: number;
+  current: number | null;
   nextThreshold: number | null;
   progressLabel: string;
   badgeStatus: "visible" | "not-visible" | "unavailable";
@@ -148,8 +148,10 @@ export function buildAchievementProgress(
     const measuredCurrent = definition.metric ? metrics[definition.metric] : undefined;
     const tierFloor = visible
       ? definition.thresholds[Math.min(visible.tier, definition.thresholds.length) - 1]
-      : 0;
-    const current = Math.max(measuredCurrent ?? 0, tierFloor ?? 0);
+      : undefined;
+    const current = measuredCurrent !== undefined || tierFloor !== undefined
+      ? Math.max(measuredCurrent ?? 0, tierFloor ?? 0)
+      : null;
     const tier = visible?.tier ?? 0;
     const unlocked = Boolean(visible);
     const badgeStatus = visible
@@ -167,7 +169,8 @@ export function buildAchievementProgress(
     const currentIsMinimum =
       definition.catalogStatus === "modeled" &&
       Boolean(visible) &&
-      (measuredCurrent === undefined || tierFloor > measuredCurrent);
+      current !== null &&
+      (measuredCurrent === undefined || (tierFloor ?? 0) > measuredCurrent);
     const measurementKind = currentIsMinimum
       ? "confirmed-minimum"
       : measuredCurrent !== undefined
@@ -190,15 +193,19 @@ export function buildAchievementProgress(
     const progressLabel =
       definition.catalogStatus === "discovered"
         ? "selo público detectado"
-        : nextThreshold
-          ? `${currentIsMinimum ? "pelo menos " : ""}${current} de ${nextThreshold}`
-          : unlocked
-            ? "marco concluído"
-            : measuredCurrent !== undefined && current > 0
-              ? `${current} medidos; selo não confirmado`
-              : badgeStatus === "unavailable"
-                ? "estado temporariamente indisponível"
-                : "sem marco público";
+        : measurementKind === "unavailable"
+          ? "estado temporariamente indisponível"
+          : measurementKind === "not-public"
+            ? unlocked
+              ? "desbloqueio visível; contador privado"
+              : "progresso não público"
+            : nextThreshold && current !== null
+              ? `${currentIsMinimum ? "pelo menos " : ""}${current} de ${nextThreshold}`
+              : unlocked
+                ? "marco concluído"
+                : measuredCurrent !== undefined && current !== null && current > 0
+                  ? `${current} medidos; selo não confirmado`
+                  : "sem marco público";
 
     return {
       ...definition,
@@ -213,4 +220,27 @@ export function buildAchievementProgress(
       confidenceLabel,
     };
   });
+}
+
+export type ActionableAchievement = AchievementProgress & {
+  current: number;
+  nextThreshold: number;
+};
+
+function hasComparableProgress(achievement: AchievementProgress): achievement is ActionableAchievement {
+  return (
+    achievement.current !== null &&
+    achievement.nextThreshold !== null &&
+    (achievement.measurementKind === "measured" || achievement.measurementKind === "confirmed-minimum")
+  );
+}
+
+export function selectNextMission(achievements: AchievementProgress[]): ActionableAchievement | null {
+  return [...achievements]
+    .filter(hasComparableProgress)
+    .sort((left, right) => {
+      const leftRemaining = Math.max(0, left.nextThreshold - left.current);
+      const rightRemaining = Math.max(0, right.nextThreshold - right.current);
+      return leftRemaining - rightRemaining;
+    })[0] ?? null;
 }
