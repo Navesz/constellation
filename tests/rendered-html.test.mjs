@@ -86,7 +86,9 @@ test("returns an honest partial audit when secondary GitHub sources fail", async
 
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("cache-control"), "public, s-maxage=30, stale-while-revalidate=60");
+  assert.equal(response.headers.get("x-constellation-schema-version"), "1");
   const audit = await response.json();
+  assert.equal(audit.schemaVersion, 1);
   assert.deepEqual(audit.sources, {
     achievements: "unavailable",
     mergedPullRequests: "unavailable",

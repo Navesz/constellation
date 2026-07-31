@@ -34,6 +34,7 @@ import {
   type AchievementFilter,
 } from "@/lib/achievement-filters";
 import { auditDataFilename, serializeAuditDataExport } from "@/lib/audit-export";
+import { readAuditApiResponse } from "@/lib/audit-contract";
 import { buildAuditRequestUrl, canPreserveAuditAfterRefresh } from "@/lib/audit-request";
 import { auditReportFilename, buildAuditMarkdown } from "@/lib/audit-report";
 import { buildAuditEvidenceSources } from "@/lib/audit-sources";
@@ -634,11 +635,10 @@ function Observatory() {
           signal: controller.signal,
           cache: refreshToken ? "no-store" : "default",
         });
-        const payload = (await response.json()) as AuditResponse & { error?: string };
-
-        if (!response.ok) {
-          throw new Error(payload.error || "Não foi possível analisar esse perfil.");
-        }
+        const payload = await readAuditApiResponse(
+          response,
+          "Não foi possível analisar esse perfil.",
+        );
         if (controller.signal.aborted) return;
 
         const currentSnapshot = createAuditSnapshot(payload);
@@ -721,11 +721,10 @@ function Observatory() {
           signal: controller.signal,
           cache: comparisonRefreshKey ? "no-store" : "default",
         });
-        const payload = (await response.json()) as AuditResponse & { error?: string };
-
-        if (!response.ok) {
-          throw new Error(payload.error || "Não foi possível analisar o segundo perfil.");
-        }
+        const payload = await readAuditApiResponse(
+          response,
+          "Não foi possível analisar o segundo perfil.",
+        );
         if (controller.signal.aborted) return;
 
         setComparisonState({ login: activeComparisonLogin, audit: payload, error: "" });

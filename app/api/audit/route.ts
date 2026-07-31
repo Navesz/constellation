@@ -1,4 +1,8 @@
-import { buildAchievementProgress } from "@/lib/achievements";
+import {
+  AUDIT_SCHEMA_VERSION,
+  buildAchievementProgress,
+  type AuditResponse,
+} from "@/lib/achievements";
 import { normalizeGitHubLogin, parseVisibleAchievements } from "@/lib/github-profile";
 import {
   GitHubRequestError,
@@ -134,47 +138,51 @@ export async function GET(request: Request) {
       },
     );
 
-    return Response.json(
-      {
-        profile: {
-          login: profile.login,
-          name: profile.name,
-          bio: profile.bio,
-          avatarUrl: profile.avatar_url,
-          htmlUrl: profile.html_url,
-          followers: profile.followers,
-          following: profile.following,
-          publicRepos: profile.public_repos,
-        },
-        metrics: {
-          mergedPullRequests: mergedSearch?.total_count ?? null,
-          topRepository: topRepository
-            ? {
-                name: topRepository.name,
-                description: topRepository.description,
-                stars: topRepository.stargazers_count,
-                forks: topRepository.forks_count,
-                url: topRepository.html_url,
-              }
-            : null,
-        },
-        sources: {
-          achievements: profilePage === null ? "unavailable" : "available",
-          mergedPullRequests: mergedSearch === null ? "unavailable" : "available",
-          repositories: repositorySearch === null ? "unavailable" : "available",
-        },
-        sourceDiagnostics: {
-          achievements: achievementDiagnostic,
-          mergedPullRequests: mergedPullRequestDiagnostic,
-          repositories: repositoryDiagnostic,
-        },
-        visibleAchievementCount: profilePage === null ? null : visibleAchievements.length,
-        achievements,
-        warnings,
-        generatedAt: new Date().toISOString(),
+    const audit: AuditResponse = {
+      schemaVersion: AUDIT_SCHEMA_VERSION,
+      profile: {
+        login: profile.login,
+        name: profile.name,
+        bio: profile.bio,
+        avatarUrl: profile.avatar_url,
+        htmlUrl: profile.html_url,
+        followers: profile.followers,
+        following: profile.following,
+        publicRepos: profile.public_repos,
       },
+      metrics: {
+        mergedPullRequests: mergedSearch?.total_count ?? null,
+        topRepository: topRepository
+          ? {
+              name: topRepository.name,
+              description: topRepository.description,
+              stars: topRepository.stargazers_count,
+              forks: topRepository.forks_count,
+              url: topRepository.html_url,
+            }
+          : null,
+      },
+      sources: {
+        achievements: profilePage === null ? "unavailable" : "available",
+        mergedPullRequests: mergedSearch === null ? "unavailable" : "available",
+        repositories: repositorySearch === null ? "unavailable" : "available",
+      },
+      sourceDiagnostics: {
+        achievements: achievementDiagnostic,
+        mergedPullRequests: mergedPullRequestDiagnostic,
+        repositories: repositoryDiagnostic,
+      },
+      visibleAchievementCount: profilePage === null ? null : visibleAchievements.length,
+      achievements,
+      warnings,
+      generatedAt: new Date().toISOString(),
+    };
+
+    return Response.json(
+      audit,
       {
         headers: {
+          "X-Constellation-Schema-Version": String(AUDIT_SCHEMA_VERSION),
           "Cache-Control": warnings.length
             ? "public, s-maxage=30, stale-while-revalidate=60"
             : "public, s-maxage=300, stale-while-revalidate=600",
