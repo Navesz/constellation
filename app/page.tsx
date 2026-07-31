@@ -83,20 +83,24 @@ function AchievementCard({ achievement }: { achievement: AchievementProgress }) 
   const statusLabel =
     achievement.badgeStatus === "unavailable"
       ? "Selo indisponível"
-      : achievement.unlocked
-        ? `Desbloqueada · nível ${achievement.tier}`
-        : "Em rota";
+      : achievement.catalogStatus === "discovered"
+        ? `Detectada no perfil · nível ${achievement.tier}`
+        : achievement.unlocked
+          ? `Desbloqueada · nível ${achievement.tier}`
+          : "Em rota";
   const milestoneLabel = achievement.nextThreshold
     ? `Próximo: ${achievement.nextThreshold}`
-    : achievement.badgeStatus === "unavailable"
-      ? "Aguardando fonte"
-      : achievement.unlocked
-        ? "Concluída"
-        : "Sem marco";
+    : achievement.catalogStatus === "discovered"
+      ? "Critério não publicado"
+      : achievement.badgeStatus === "unavailable"
+        ? "Aguardando fonte"
+        : achievement.unlocked
+          ? "Concluída"
+          : "Sem marco";
 
   return (
     <article
-      className={`achievement ${achievement.unlocked ? "is-unlocked" : ""} ${achievement.badgeStatus === "unavailable" ? "is-unknown" : ""}`}
+      className={`achievement ${achievement.unlocked ? "is-unlocked" : ""} ${achievement.badgeStatus === "unavailable" ? "is-unknown" : ""} ${achievement.catalogStatus === "discovered" ? "is-discovered" : ""}`}
     >
       <div className="achievement-topline">
         <span className="achievement-glyph" aria-hidden="true">
@@ -755,13 +759,13 @@ function Observatory() {
               <p className="eyebrow">mapa de conquistas</p>
               <h2>Progresso, não teatro.</h2>
             </div>
-            <p>Agora cada número declara se foi medido ou apenas confirmado como valor mínimo pelo selo.</p>
+            <p>Selos novos ou históricos também entram no mapa, sem inventar critérios ou progresso que o GitHub não publica.</p>
           </section>
 
           <aside className="trust-legend" aria-label="Legenda de confiabilidade dos dados">
             <span><i className="legend-measured" /> medido com dados públicos</span>
             <span><i className="legend-minimum" /> mínimo confirmado pelo selo</span>
-            <span><i className="legend-private" /> contador não é público</span>
+            <span><i className="legend-private" /> contador ou critério não é público</span>
             <span><i className="legend-unavailable" /> fonte temporariamente indisponível</span>
           </aside>
 

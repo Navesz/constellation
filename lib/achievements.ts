@@ -13,7 +13,11 @@ type AchievementDefinition = {
   metric?: "mergedPullRequests" | "topRepositoryStars";
 };
 
-export type AchievementProgress = AchievementDefinition & {
+type CatalogedAchievementDefinition = AchievementDefinition & {
+  catalogStatus: "modeled" | "discovered";
+};
+
+export type AchievementProgress = CatalogedAchievementDefinition & {
   unlocked: boolean;
   tier: number;
   current: number;
@@ -120,8 +124,26 @@ export function buildAchievementProgress(
 ): AchievementProgress[] {
   const visibleBySlug = new Map(visibleAchievements.map((item) => [item.slug, item]));
   const achievementScanAvailable = options.achievementScanAvailable ?? true;
+  const modeledSlugs = new Set(achievementDefinitions.map((definition) => definition.slug));
+  const definitions: CatalogedAchievementDefinition[] = [
+    ...achievementDefinitions.map((definition) => ({
+      ...definition,
+      catalogStatus: "modeled" as const,
+    })),
+    ...visibleAchievements
+      .filter((achievement) => !modeledSlugs.has(achievement.slug))
+      .map((achievement) => ({
+        name: achievement.name,
+        slug: achievement.slug,
+        description:
+          "Conquista exibida publicamente no perfil, ainda sem critérios estáveis catalogados pelo Constellation.",
+        nextAction: "Abra o selo no GitHub para consultar os eventos públicos associados.",
+        thresholds: [],
+        catalogStatus: "discovered" as const,
+      })),
+  ];
 
-  return achievementDefinitions.map((definition) => {
+  return definitions.map((definition) => {
     const visible = visibleBySlug.get(definition.slug);
     const measuredCurrent = definition.metric ? metrics[definition.metric] : undefined;
     const tierFloor = visible
@@ -142,7 +164,10 @@ export function buildAchievementProgress(
         : achievementScanAvailable
           ? definition.thresholds[0] ?? null
           : null;
-    const currentIsMinimum = Boolean(visible) && (measuredCurrent === undefined || tierFloor > measuredCurrent);
+    const currentIsMinimum =
+      definition.catalogStatus === "modeled" &&
+      Boolean(visible) &&
+      (measuredCurrent === undefined || tierFloor > measuredCurrent);
     const measurementKind = currentIsMinimum
       ? "confirmed-minimum"
       : measuredCurrent !== undefined
@@ -151,24 +176,29 @@ export function buildAchievementProgress(
           ? "unavailable"
         : "not-public";
     const confidenceLabel =
-      measurementKind === "confirmed-minimum"
-        ? "mínimo confirmado pelo selo"
-        : measurementKind === "measured"
-          ? "medido com dados públicos"
-          : measurementKind === "unavailable"
-            ? "fonte temporariamente indisponível"
+      definition.catalogStatus === "discovered"
+        ? "selo público detectado; critérios não catalogados"
+        : measurementKind === "confirmed-minimum"
+          ? "mínimo confirmado pelo selo"
+          : measurementKind === "measured"
+            ? "medido com dados públicos"
+            : measurementKind === "unavailable"
+              ? "fonte temporariamente indisponível"
+              : unlocked
+                ? "desbloqueio confirmado; contador privado"
+                : "contador não é público";
+    const progressLabel =
+      definition.catalogStatus === "discovered"
+        ? "selo público detectado"
+        : nextThreshold
+          ? `${currentIsMinimum ? "pelo menos " : ""}${current} de ${nextThreshold}`
           : unlocked
-            ? "desbloqueio confirmado; contador privado"
-            : "contador não é público";
-    const progressLabel = nextThreshold
-      ? `${currentIsMinimum ? "pelo menos " : ""}${current} de ${nextThreshold}`
-      : unlocked
-        ? "marco concluído"
-        : measuredCurrent !== undefined && current > 0
-          ? `${current} medidos; selo não confirmado`
-          : badgeStatus === "unavailable"
-            ? "estado temporariamente indisponível"
-            : "sem marco público";
+            ? "marco concluído"
+            : measuredCurrent !== undefined && current > 0
+              ? `${current} medidos; selo não confirmado`
+              : badgeStatus === "unavailable"
+                ? "estado temporariamente indisponível"
+                : "sem marco público";
 
     return {
       ...definition,

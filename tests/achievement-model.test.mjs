@@ -86,3 +86,22 @@ test("preserves measured progress when only the badge scan is unavailable", () =
   assert.equal(pullShark.nextThreshold, 16);
   assert.equal(pullShark.measurementKind, "measured");
 });
+
+test("includes visible historical or newly released achievements outside the modeled catalog", () => {
+  const progress = buildAchievementProgress(
+    [{ name: "Mars 2020 Contributor", slug: "mars-2020-contributor", tier: 1 }],
+    {},
+  );
+
+  const discovered = progress.find((item) => item.slug === "mars-2020-contributor");
+  assert.ok(discovered);
+  assert.equal(discovered.name, "Mars 2020 Contributor");
+  assert.equal(discovered.catalogStatus, "discovered");
+  assert.equal(discovered.unlocked, true);
+  assert.equal(discovered.tier, 1);
+  assert.equal(discovered.nextThreshold, null);
+  assert.equal(discovered.measurementKind, "not-public");
+  assert.equal(discovered.currentIsMinimum, false);
+  assert.equal(discovered.progressLabel, "selo público detectado");
+  assert.equal(discovered.confidenceLabel, "selo público detectado; critérios não catalogados");
+});
