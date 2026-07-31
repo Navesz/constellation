@@ -12,7 +12,12 @@ const legacyExportSchemaUrl = `${PUBLIC_SITE_URL}${LEGACY_AUDIT_EXPORT_SCHEMA_PA
 const commonProperties = {
   format: { const: AUDIT_EXPORT_FORMAT },
   exportedAt: { type: "string", format: "date-time" },
-  shareUrl: { type: "string", format: "uri", pattern: "^https?://" },
+  shareUrl: {
+    type: "string",
+    format: "uri",
+    pattern: "^https?://",
+    description: "Canonical root route whose login and optional comparison match the embedded audits.",
+  },
   privacy: {
     type: "object",
     additionalProperties: false,

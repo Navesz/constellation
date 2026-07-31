@@ -1,6 +1,7 @@
 import type { AuditResponse } from "./achievements.ts";
 import { isAuditResponse } from "./audit-contract.ts";
 import { constellationExportFilename } from "./export-filename.ts";
+import { normalizeGitHubLogin } from "./github-profile.ts";
 import { PUBLIC_SITE_URL } from "./site.ts";
 
 export const AUDIT_EXPORT_FORMAT = "constellation-audit";
@@ -67,6 +68,66 @@ function webUrl(value: unknown): value is string {
   }
 }
 
+function sameLogin(first: string, second: string) {
+  return first.toLowerCase() === second.toLowerCase();
+}
+
+function validAuditShareUrl(
+  value: unknown,
+  primaryLogin: string,
+  comparisonLogin?: string | null,
+): value is string {
+  if (!webUrl(value)) return false;
+
+  const url = new URL(value);
+  const expectedKeys = comparisonLogin ? ["compare", "login"] : ["login"];
+  const actualKeys = [...url.searchParams.keys()].sort();
+  const login = url.searchParams.get("login");
+  const comparison = url.searchParams.get("compare");
+
+  return url.pathname === "/"
+    && url.username === ""
+    && url.password === ""
+    && url.hash === ""
+    && actualKeys.length === expectedKeys.length
+    && actualKeys.every((key, index) => key === expectedKeys[index])
+    && url.searchParams.getAll("login").length === 1
+    && url.searchParams.getAll("compare").length === (comparisonLogin ? 1 : 0)
+    && login !== null
+    && sameLogin(login, primaryLogin)
+    && (comparisonLogin ? comparison !== null && sameLogin(comparison, comparisonLogin) : comparison === null);
+}
+
+export function buildAuditShareUrl(
+  baseUrl: string,
+  primaryLogin: string,
+  comparisonLogin?: string | null,
+) {
+  const primary = normalizeGitHubLogin(primaryLogin);
+  const comparison = comparisonLogin ? normalizeGitHubLogin(comparisonLogin) : null;
+  if (!webUrl(baseUrl) || !primary || (comparisonLogin && !comparison)) {
+    throw new Error("Não foi possível criar uma rota compartilhável válida.");
+  }
+
+  const url = new URL(baseUrl);
+  url.pathname = "/";
+  url.search = "";
+  url.hash = "";
+  url.username = "";
+  url.password = "";
+  url.searchParams.set("login", primary);
+  if (comparison) url.searchParams.set("compare", comparison);
+  return url.toString();
+}
+
+export function isOfficialAuditShareUrl(value: string) {
+  try {
+    return new URL(value).origin === new URL(PUBLIC_SITE_URL).origin;
+  } catch {
+    return false;
+  }
+}
+
 function validPrivacy(value: unknown): value is AuditDataExport["privacy"] {
   return record(value) &&
     hasExactKeys(value, ["publicDataOnly", "includesLocalHistory"]) &&
@@ -95,13 +156,18 @@ export function parseAuditDataExport(value: unknown): ParsedAuditDataExport | nu
   if (
     value.format !== AUDIT_EXPORT_FORMAT ||
     !validDate(value.exportedAt) ||
-    !webUrl(value.shareUrl) ||
     !validPrivacy(value.privacy) ||
     !isAuditResponse(value.primary) ||
     (value.comparison !== null && !isAuditResponse(value.comparison))
   ) {
     return null;
   }
+
+  if (!validAuditShareUrl(
+    value.shareUrl,
+    value.primary.profile.login,
+    value.comparison?.profile.login,
+  )) return null;
 
   return {
     sourceVersion: version,
@@ -137,6 +203,11 @@ export function buildAuditDataExport({
   shareUrl,
   exportedAt = new Date().toISOString(),
 }: AuditDataExportOptions): AuditDataExport {
+  const comparisonAudit = comparison ?? null;
+  if (!validAuditShareUrl(shareUrl, audit.profile.login, comparisonAudit?.profile.login)) {
+    throw new Error("A rota compartilhável não corresponde aos perfis exportados.");
+  }
+
   return {
     $schema: AUDIT_EXPORT_SCHEMA_URL,
     format: AUDIT_EXPORT_FORMAT,
@@ -148,7 +219,7 @@ export function buildAuditDataExport({
       includesLocalHistory: false,
     },
     primary: audit,
-    comparison: comparison ?? null,
+    comparison: comparisonAudit,
   };
 }
 

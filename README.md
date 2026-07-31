@@ -61,6 +61,11 @@ e o contrato legado da versão 1 permanece disponível em `GET /api/export/schem
 O guia em `GET /docs` também oferece um verificador de arquivos que roda somente
 no navegador, aceita os dois formatos e rejeita backups ou envelopes com dados
 inesperados sem fazer upload nem consultar o GitHub.
+O verificador exige ainda que a rota compartilhável use somente `login` e
+`compare`, corresponda exatamente aos perfis embutidos e não carregue caminho,
+fragmento ou credenciais. Links da origem oficial podem ser abertos diretamente;
+uma origem externa legítima, como um ambiente local, fica identificada sem virar
+um link confiável por acidente.
 
 A rota `GET /api/audit?login=octocat` expõe o mesmo retrato para integrações.
 Respostas bem-sucedidas carregam `schemaVersion: 2` no corpo e o cabeçalho

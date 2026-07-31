@@ -48,7 +48,11 @@ import {
   filterAchievements,
   type AchievementFilter,
 } from "@/lib/achievement-filters";
-import { auditDataFilename, serializeAuditDataExport } from "@/lib/audit-export";
+import {
+  auditDataFilename,
+  buildAuditShareUrl,
+  serializeAuditDataExport,
+} from "@/lib/audit-export";
 import { readAuditApiResponse } from "@/lib/audit-contract";
 import {
   buildAuditRequestUrl,
@@ -1016,15 +1020,11 @@ function Observatory() {
   }
 
   function buildShareUrl(comparison?: string | null) {
-    const shareUrl = new URL(window.location.href);
-    shareUrl.searchParams.set("login", audit?.profile.login ?? routeLogin);
-    if (comparison) {
-      shareUrl.searchParams.set("compare", comparison);
-    } else {
-      shareUrl.searchParams.delete("compare");
-    }
-
-    return shareUrl;
+    return new URL(buildAuditShareUrl(
+      window.location.origin,
+      audit?.profile.login ?? routeLogin,
+      comparison,
+    ));
   }
 
   async function copyShareLink() {
