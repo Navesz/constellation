@@ -1,5 +1,6 @@
 import { selectNextMission, type AchievementProgress, type AuditResponse } from "./achievements.ts";
 import { buildAuditEvidenceSources } from "./audit-sources.ts";
+import { constellationExportFilename } from "./export-filename.ts";
 import { compareProfiles } from "./profile-comparison.ts";
 
 export type AuditReportOptions = {
@@ -62,19 +63,8 @@ function appendEvidenceTable(lines: string[], audit: AuditResponse, heading: str
   );
 }
 
-function safeFilenameSegment(value: string) {
-  return value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "perfil";
-}
-
 export function auditReportFilename(login: string, comparisonLogin?: string | null) {
-  const primary = safeFilenameSegment(login);
-  const comparison = comparisonLogin ? `-vs-${safeFilenameSegment(comparisonLogin)}` : "";
-  return `constellation-${primary}${comparison}.md`;
+  return constellationExportFilename(login, comparisonLogin, "md");
 }
 
 export function buildAuditMarkdown({ audit, comparison, shareUrl }: AuditReportOptions) {
