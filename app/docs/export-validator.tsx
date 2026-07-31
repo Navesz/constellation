@@ -3,6 +3,7 @@
 import { ChangeEvent, useState } from "react";
 import {
   INVALID_AUDIT_EXPORT_MESSAGE,
+  isOfficialAuditShareUrl,
   readAuditDataExport,
   type ParsedAuditDataExport,
 } from "@/lib/audit-export";
@@ -50,6 +51,12 @@ export function ExportValidator() {
   }
 
   const valid = state.status === "valid" ? state : null;
+  const officialShareUrl = valid
+    ? isOfficialAuditShareUrl(valid.parsed.data.shareUrl)
+    : false;
+  const shareOrigin = valid
+    ? new URL(valid.parsed.data.shareUrl).origin
+    : null;
 
   return (
     <section className="docs-section docs-export-validator" aria-labelledby="export-validator-title">
@@ -63,7 +70,8 @@ export function ExportValidator() {
         </p>
         <p className="docs-export-privacy" id="export-validator-note">
           <strong>Limite de 512 KB.</strong> Formatos atuais e arquivos legados v1 são aceitos;
-          backups do histórico local são deliberadamente rejeitados.
+          backups do histórico local são deliberadamente rejeitados. A rota precisa corresponder
+          aos perfis do arquivo, e somente a origem oficial se torna um link direto.
         </p>
       </div>
 
@@ -110,9 +118,16 @@ export function ExportValidator() {
               <div><dt>Exportado</dt><dd>{dateFormatter.format(new Date(valid.parsed.data.exportedAt))}</dd></div>
               <div><dt>Privacidade</dt><dd>somente dados públicos · sem histórico local</dd></div>
             </dl>
-            <a href={valid.parsed.data.shareUrl} target="_blank" rel="noreferrer">
-              Abrir rota compartilhada <span aria-hidden="true">↗</span>
-            </a>
+            {officialShareUrl ? (
+              <a href={valid.parsed.data.shareUrl} target="_blank" rel="noreferrer">
+                Abrir rota oficial compartilhada <span aria-hidden="true">↗</span>
+              </a>
+            ) : (
+              <p className="docs-export-origin-warning">
+                <strong>Origem externa preservada, mas não aberta.</strong>{" "}
+                A rota corresponde aos perfis do arquivo, porém aponta para <code>{shareOrigin}</code>.
+              </p>
+            )}
           </div>
         ) : null}
       </div>

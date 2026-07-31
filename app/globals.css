@@ -2346,6 +2346,21 @@ footer {
   text-transform: uppercase;
 }
 
+.docs-export-origin-warning {
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--signal) 42%, transparent);
+  background: color-mix(in srgb, var(--signal) 8%, transparent);
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.docs-export-origin-warning strong,
+.docs-export-origin-warning code {
+  color: var(--ink);
+}
+
 .docs-response-table-wrap {
   overflow-x: auto;
   border: 1px solid var(--ink);

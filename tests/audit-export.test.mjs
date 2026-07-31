@@ -7,6 +7,8 @@ import {
   INVALID_AUDIT_EXPORT_MESSAGE,
   auditDataFilename,
   buildAuditDataExport,
+  buildAuditShareUrl,
+  isOfficialAuditShareUrl,
   parseAuditDataExport,
   readAuditDataExport,
   serializeAuditDataExport,
@@ -95,6 +97,34 @@ test("creates stable, sanitized JSON filenames", () => {
   assert.equal(auditDataFilename("***"), "constellation-perfil.json");
 });
 
+test("builds canonical share routes without inherited path, query or fragment", () => {
+  assert.equal(
+    buildAuditShareUrl(
+      "https://example.test/docs?utm_source=old#section",
+      "OctoCat",
+      "Hubot",
+    ),
+    "https://example.test/?login=OctoCat&compare=Hubot",
+  );
+  assert.equal(
+    buildAuditShareUrl("http://localhost:3000/anything", "octocat"),
+    "http://localhost:3000/?login=octocat",
+  );
+  assert.throws(() => buildAuditShareUrl("javascript:alert(1)", "octocat"));
+  assert.throws(() => buildAuditShareUrl("https://example.test", "-invalid"));
+  assert.throws(() => buildAuditDataExport({
+    audit: audit(),
+    shareUrl: "https://example.test/?login=someone-else",
+  }));
+});
+
+test("identifies only the deployed Constellation origin as official", () => {
+  assert.equal(isOfficialAuditShareUrl(AUDIT_EXPORT_SCHEMA_URL.replace("/api/export/schema/2", "/?login=octocat")), true);
+  assert.equal(isOfficialAuditShareUrl("http://localhost:3000/?login=octocat"), false);
+  assert.equal(isOfficialAuditShareUrl("https://example.test/?login=octocat"), false);
+  assert.equal(isOfficialAuditShareUrl("not a URL"), false);
+});
+
 test("reads and normalizes self-describing version 2 exports", () => {
   const primary = audit();
   const comparison = audit("hubot");
@@ -112,6 +142,25 @@ test("reads and normalizes self-describing version 2 exports", () => {
     readAuditDataExport(`\uFEFF${JSON.stringify(exported)}`),
     parsed,
   );
+});
+
+test("requires comparison routes to match both embedded profiles", () => {
+  const exported = buildAuditDataExport({
+    audit: audit(),
+    comparison: audit("hubot"),
+    shareUrl: "https://example.test/?login=octocat&compare=hubot",
+    exportedAt: "2026-07-31T13:00:00.000Z",
+  });
+
+  assert.notEqual(parseAuditDataExport(exported), null);
+  assert.equal(parseAuditDataExport({
+    ...exported,
+    shareUrl: "https://example.test/?login=octocat",
+  }), null);
+  assert.equal(parseAuditDataExport({
+    ...exported,
+    shareUrl: "https://example.test/?login=octocat&compare=wrong-user",
+  }), null);
 });
 
 test("reads legacy version 1 files and normalizes them to the current contract", () => {
@@ -140,6 +189,12 @@ test("rejects malformed, private or extended export envelopes", () => {
   assert.equal(parseAuditDataExport({ ...current, history: [] }), null);
   assert.equal(parseAuditDataExport({ ...current, $schema: "https://example.test/schema" }), null);
   assert.equal(parseAuditDataExport({ ...current, shareUrl: "javascript:alert(1)" }), null);
+  assert.equal(parseAuditDataExport({ ...current, shareUrl: "https://example.test/?login=hubot" }), null);
+  assert.equal(parseAuditDataExport({ ...current, shareUrl: "https://example.test/docs?login=octocat" }), null);
+  assert.equal(parseAuditDataExport({ ...current, shareUrl: "https://example.test/?login=octocat&next=phishing" }), null);
+  assert.equal(parseAuditDataExport({ ...current, shareUrl: "https://example.test/?login=octocat#redirect" }), null);
+  assert.equal(parseAuditDataExport({ ...current, shareUrl: "https://user:secret@example.test/?login=octocat" }), null);
+  assert.equal(parseAuditDataExport({ ...current, shareUrl: "https://example.test/?login=octocat&login=octocat" }), null);
   assert.equal(parseAuditDataExport({
     ...current,
     privacy: { publicDataOnly: true, includesLocalHistory: true },

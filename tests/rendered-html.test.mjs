@@ -181,6 +181,7 @@ test("server-renders a human integration guide next to the machine contracts", a
   assert.match(html, /Confirme o arquivo antes de confiar nele\./);
   assert.match(html, /Escolher exportação \.json/);
   assert.match(html, /Leitura local · sem upload/);
+  assert.match(html, /somente a origem oficial se torna um link direto/);
   assert.match(html, /\/api\/openapi\.json/);
   assert.match(html, /\/api\/status/);
   assert.match(html, /Saúde sem gastar uma consulta externa\./);
