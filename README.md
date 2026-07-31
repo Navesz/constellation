@@ -54,7 +54,11 @@ contrato antes de atualizar a interface; respostas incompletas ou de outra
 versão falham de forma legível, sem produzir contagens parciais acidentais.
 O JSON Schema Draft 2020-12 oficial fica em `GET /api/audit/schema/2` e também é
 anunciado pelo cabeçalho `Link` de cada auditoria bem-sucedida.
-As duas rotas aceitam `GET` entre origens com CORS explícito e respondem a
+Uma descrição OpenAPI 3.1.1 completa fica em `GET /api/openapi.json`; ela
+documenta parâmetros, respostas, erros e referencia o JSON Schema versionado.
+O mesmo cabeçalho `Link` a anuncia com a relação `service-desc`, permitindo que
+ferramentas descubram o contrato a partir de uma resposta da auditoria.
+As rotas públicas aceitam `GET` entre origens com CORS explícito e respondem a
 preflight `OPTIONS`; `Link`, `Retry-After` e a versão do esquema ficam expostos
 ao navegador. Respostas `429` usam ainda o cabeçalho HTTP `Retry-After`, além do
 campo estruturado `retryAt` no corpo.

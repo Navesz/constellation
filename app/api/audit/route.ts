@@ -4,7 +4,7 @@ import {
   type AuditResponse,
 } from "@/lib/achievements";
 import { normalizeGitHubLogin, parseVisibleAchievements } from "@/lib/github-profile";
-import { AUDIT_SCHEMA_LINK_HEADER } from "@/lib/audit-schema";
+import { PUBLIC_API_LINK_HEADER } from "@/lib/openapi";
 import {
   hasSupportedAuditQueryParameters,
   isValidAuditRefreshToken,
@@ -215,7 +215,7 @@ export async function GET(request: Request) {
       {
         headers: publicApiHeaders({
           "X-Constellation-Schema-Version": String(AUDIT_SCHEMA_VERSION),
-          Link: AUDIT_SCHEMA_LINK_HEADER,
+          Link: PUBLIC_API_LINK_HEADER,
           "Cache-Control": warnings.length
             ? "public, s-maxage=30, stale-while-revalidate=60"
             : "public, s-maxage=300, stale-while-revalidate=600",
