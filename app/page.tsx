@@ -8,7 +8,6 @@ import {
   AUDIT_HISTORY_STORAGE_KEY,
   MAX_SNAPSHOTS_PER_PROFILE,
   MAX_TRACKED_PROFILES,
-  appendAuditSnapshot,
   auditHistoryBackupFilename,
   auditTimelineCsvFilename,
   buildAuditTimeline,
@@ -29,6 +28,12 @@ import {
   type AuditTimelineEntry,
   type RecentAuditProfile,
 } from "@/lib/audit-history";
+import {
+  AUDIT_HISTORY_RECORDING_STORAGE_KEY,
+  applyAuditHistoryRecordingPreference,
+  parseAuditHistoryRecordingPreference,
+  serializeAuditHistoryRecordingPreference,
+} from "@/lib/audit-history-preference";
 import { selectNextMission, type AchievementProgress, type AuditResponse } from "@/lib/achievements";
 import {
   ACHIEVEMENT_FILTER_OPTIONS,
@@ -69,6 +74,7 @@ type LocalProgressMemory = {
   changes: AuditChanges | null;
   timeline: AuditTimelineEntry[];
   recorded: boolean;
+  recordingEnabled: boolean;
   storageAvailable: boolean;
   cleared: boolean;
 };
@@ -417,6 +423,7 @@ function ProgressHistory({
   onDownloadBackup,
   onDownloadTimeline,
   onImportBackup,
+  onToggleRecording,
   backupStatus,
 }: {
   audit: AuditResponse;
@@ -425,6 +432,7 @@ function ProgressHistory({
   onDownloadBackup: () => void;
   onDownloadTimeline: () => void;
   onImportBackup: (event: ChangeEvent<HTMLInputElement>) => void;
+  onToggleRecording: () => void;
   backupStatus: string;
 }) {
   const changedSignals = memory.changes
@@ -457,16 +465,47 @@ function ProgressHistory({
           <p className="kicker"><span /> memória local</p>
           <h2 id="history-title">O pulso ao longo do tempo.</h2>
         </div>
-        <p>
-          O histórico fica somente neste navegador, guarda até {MAX_SNAPSHOTS_PER_PROFILE} estados completos por perfil em {MAX_TRACKED_PROFILES} perfis recentes e nunca entra no link compartilhado.
-        </p>
+        <div className="history-privacy">
+          <p>
+            O histórico fica somente neste navegador, guarda até {MAX_SNAPSHOTS_PER_PROFILE} estados completos por perfil em {MAX_TRACKED_PROFILES} perfis recentes e nunca entra no link compartilhado.
+          </p>
+          {memory.storageAvailable ? (
+            <div className="history-recording-control">
+              <span
+                className={memory.recordingEnabled ? "is-active" : "is-paused"}
+                id="history-recording-state"
+                aria-live="polite"
+              >
+                <i aria-hidden="true" />
+                {memory.recordingEnabled
+                  ? "novas leituras são salvas"
+                  : "novas leituras não são salvas"}
+              </span>
+              <button
+                type="button"
+                aria-describedby="history-recording-state"
+                onClick={onToggleRecording}
+              >
+                {memory.recordingEnabled
+                  ? "Pausar novas gravações"
+                  : "Retomar novas gravações"}
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div aria-live="polite">
         {!memory.storageAvailable ? (
           <p className="history-empty">Este navegador não permitiu salvar o histórico. A auditoria atual continua funcionando normalmente.</p>
         ) : memory.cleared ? (
-          <p className="history-empty">Histórico deste perfil apagado. Uma nova leitura criará outra linha de base.</p>
+          <p className="history-empty">
+            Histórico deste perfil apagado. {memory.recordingEnabled
+              ? "Uma nova leitura completa criará outra linha de base."
+              : "Novas gravações continuam pausadas."}
+          </p>
+        ) : !memory.recordingEnabled && !memory.previous ? (
+          <p className="history-empty">Novas gravações estão pausadas. O histórico existente continua disponível.</p>
         ) : !memory.previous ? (
           <p className="history-empty">
             {memory.recorded
@@ -542,7 +581,9 @@ function ProgressHistory({
       {memory.storageAvailable && !memory.cleared && (memory.recorded || memory.previous) ? (
         <button className="history-clear" type="button" onClick={onClear}>Apagar histórico deste perfil</button>
       ) : null}
-      {!memory.recorded && memory.previous && !memory.cleared ? (
+      {!memory.recordingEnabled ? (
+        <p className="history-note">Novas gravações pausadas: as próximas leituras não alterarão a linha do tempo.</p>
+      ) : !memory.recorded && memory.previous && !memory.cleared ? (
         <p className="history-note">Leitura parcial: a linha de base anterior foi preservada.</p>
       ) : null}
 
@@ -741,12 +782,19 @@ function Observatory() {
         const currentSnapshot = createAuditSnapshot(payload);
         try {
           const history = parseAuditHistory(window.localStorage.getItem(AUDIT_HISTORY_STORAGE_KEY));
+          const recordingEnabled = parseAuditHistoryRecordingPreference(
+            window.localStorage.getItem(AUDIT_HISTORY_RECORDING_STORAGE_KEY),
+          );
           const previous = findComparisonSnapshot(history, currentSnapshot);
           const changes = previous ? compareAuditSnapshots(currentSnapshot, previous) : null;
-          let nextHistory = history;
+          const recording = applyAuditHistoryRecordingPreference(
+            history,
+            currentSnapshot,
+            recordingEnabled,
+          );
+          const nextHistory = recording.history;
 
-          if (currentSnapshot.complete) {
-            nextHistory = appendAuditSnapshot(history, currentSnapshot);
+          if (recording.recorded) {
             window.localStorage.setItem(AUDIT_HISTORY_STORAGE_KEY, serializeAuditHistory(nextHistory));
           }
 
@@ -757,7 +805,8 @@ function Observatory() {
             previous,
             changes,
             timeline: buildAuditTimeline(nextHistory, currentSnapshot.login),
-            recorded: currentSnapshot.complete,
+            recorded: recording.recorded,
+            recordingEnabled,
             storageAvailable: true,
             cleared: false,
           });
@@ -769,6 +818,7 @@ function Observatory() {
             changes: null,
             timeline: [],
             recorded: false,
+            recordingEnabled: false,
             storageAvailable: false,
             cleared: false,
           });
@@ -1075,12 +1125,17 @@ function Observatory() {
       if (audit) {
         const currentSnapshot = createAuditSnapshot(audit);
         const previous = findComparisonSnapshot(mergedHistory, currentSnapshot);
+        const recordingEnabled = localProgress?.recordingEnabled
+          ?? parseAuditHistoryRecordingPreference(
+            window.localStorage.getItem(AUDIT_HISTORY_RECORDING_STORAGE_KEY),
+          );
         setLocalProgress({
           current: currentSnapshot,
           previous,
           changes: previous ? compareAuditSnapshots(currentSnapshot, previous) : null,
           timeline: buildAuditTimeline(mergedHistory, currentSnapshot.login),
-          recorded: currentSnapshot.complete,
+          recorded: currentSnapshot.complete && recordingEnabled,
+          recordingEnabled,
           storageAvailable: true,
           cleared: false,
         });
@@ -1117,6 +1172,54 @@ function Observatory() {
         timeline: [],
         recorded: false,
         cleared: true,
+      });
+    } catch {
+      setLocalProgress({
+        ...localProgress,
+        storageAvailable: false,
+      });
+    }
+  }
+
+  function toggleHistoryRecording() {
+    if (!audit || !localProgress?.storageAvailable) return;
+
+    const recordingEnabled = !localProgress.recordingEnabled;
+    try {
+      window.localStorage.setItem(
+        AUDIT_HISTORY_RECORDING_STORAGE_KEY,
+        serializeAuditHistoryRecordingPreference(recordingEnabled),
+      );
+
+      if (!recordingEnabled) {
+        setLocalProgress({
+          ...localProgress,
+          recordingEnabled: false,
+        });
+        return;
+      }
+
+      const history = parseAuditHistory(window.localStorage.getItem(AUDIT_HISTORY_STORAGE_KEY));
+      const currentSnapshot = createAuditSnapshot(audit);
+      const previous = findComparisonSnapshot(history, currentSnapshot);
+      const recording = applyAuditHistoryRecordingPreference(history, currentSnapshot, true);
+
+      if (recording.recorded) {
+        window.localStorage.setItem(
+          AUDIT_HISTORY_STORAGE_KEY,
+          serializeAuditHistory(recording.history),
+        );
+      }
+      setRecentProfiles(listRecentAuditProfiles(recording.history));
+      setLocalProgress({
+        current: currentSnapshot,
+        previous,
+        changes: previous ? compareAuditSnapshots(currentSnapshot, previous) : null,
+        timeline: buildAuditTimeline(recording.history, currentSnapshot.login),
+        recorded: recording.recorded,
+        recordingEnabled: true,
+        storageAvailable: true,
+        cleared: recording.recorded ? false : localProgress.cleared,
       });
     } catch {
       setLocalProgress({
@@ -1360,6 +1463,7 @@ function Observatory() {
               onDownloadBackup={downloadHistoryBackup}
               onDownloadTimeline={downloadHistoryTimeline}
               onImportBackup={importHistoryBackup}
+              onToggleRecording={toggleHistoryRecording}
               backupStatus={historyBackupStatus}
             />
           ) : null}
