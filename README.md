@@ -23,6 +23,11 @@ perfil e oito perfis recentes. Essa memória fica somente no navegador, não é
 incluída nos links compartilhados e pode ser apagada por perfil na interface.
 Leituras parciais nunca substituem uma linha de base completa.
 
+Um segundo perfil pode ser adicionado para comparação. A URL preserva os dois
+logins, o painel calcula o delta como `segundo - principal` e omite qualquer
+diferença cuja fonte esteja indisponível. A comparação não cria pontuação geral
+nem declara um vencedor.
+
 ## Desenvolvimento
 
 ```bash

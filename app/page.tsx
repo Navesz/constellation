@@ -18,9 +18,10 @@ import {
   type AuditSnapshot,
 } from "@/lib/audit-history";
 import type { AchievementProgress, AuditResponse } from "@/lib/achievements";
+import { normalizeGitHubLogin } from "@/lib/github-profile";
+import { compareProfiles, type ComparisonAchievementState } from "@/lib/profile-comparison";
 
 const DEFAULT_LOGIN = "Navesz";
-const LOGIN_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
 
 const achievementGlyphs: Record<string, string> = {
   "pair-extraordinaire": "◇",
@@ -41,6 +42,12 @@ type LocalProgressMemory = {
   cleared: boolean;
 };
 
+type ComparisonRequestState = {
+  login: string;
+  audit: AuditResponse | null;
+  error: string;
+};
+
 function compactNumber(value: number) {
   return new Intl.NumberFormat("pt-BR", { notation: "compact" }).format(value);
 }
@@ -51,9 +58,11 @@ function signedNumber(value: number) {
   return "0";
 }
 
-function normalizedLogin(value: string | null) {
-  const normalized = value?.trim().replace(/^@/, "") ?? "";
-  return LOGIN_PATTERN.test(normalized) ? normalized : DEFAULT_LOGIN;
+function comparisonAchievementLabel(state: ComparisonAchievementState) {
+  if (state.badgeStatus === "unavailable") return "Fonte indisponível";
+  if (state.unlocked) return `Nível ${state.tier}`;
+  if (state.nextThreshold) return `${state.current} de ${state.nextThreshold}`;
+  return "Não visível";
 }
 
 function ProgressBar({ achievement }: { achievement: AchievementProgress }) {
@@ -190,17 +199,120 @@ function ProgressHistory({
   );
 }
 
+function ProfileComparisonPanel({
+  primary,
+  secondary,
+  onRemove,
+}: {
+  primary: AuditResponse;
+  secondary: AuditResponse;
+  onRemove: () => void;
+}) {
+  const comparison = compareProfiles(primary, secondary);
+
+  return (
+    <section className="comparison-panel" aria-labelledby="comparison-title">
+      <div className="comparison-heading">
+        <div>
+          <p className="kicker"><span /> órbita comparativa</p>
+          <h2 id="comparison-title">{primary.profile.login} × {secondary.profile.login}</h2>
+          <p>Diferenças públicas lado a lado, sem ranking composto ou nota inventada.</p>
+        </div>
+        <button type="button" onClick={onRemove}>Encerrar comparação</button>
+      </div>
+
+      <div className="comparison-identities" aria-label="Perfis comparados">
+        {[primary, secondary].map((item, index) => (
+          <div className="comparison-identity" key={item.profile.login}>
+            <Image src={item.profile.avatarUrl} alt="" width={52} height={52} unoptimized />
+            <div>
+              <span className="eyebrow">{index === 0 ? "perfil principal" : "segundo perfil"}</span>
+              <strong>{item.profile.name || item.profile.login}</strong>
+              <a href={item.profile.htmlUrl} target="_blank" rel="noreferrer">@{item.profile.login} ↗</a>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {secondary.warnings.length ? (
+        <p className="comparison-warning" role="status">
+          A segunda auditoria está parcial; sinais indisponíveis aparecem como travessão e não entram no delta.
+        </p>
+      ) : null}
+
+      <div className="comparison-table-wrap">
+        <table className="comparison-table">
+          <caption>O delta representa o segundo perfil menos o perfil principal.</caption>
+          <thead>
+            <tr>
+              <th scope="col">Sinal público</th>
+              <th scope="col">@{primary.profile.login}</th>
+              <th scope="col">@{secondary.profile.login}</th>
+              <th scope="col">Δ segundo − principal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {comparison.metrics.map((metric) => (
+              <tr key={metric.id}>
+                <th scope="row">{metric.label}</th>
+                <td>{metric.primary ?? "—"}</td>
+                <td>{metric.secondary ?? "—"}</td>
+                <td className={metric.difference !== null && metric.difference < 0 ? "is-negative" : ""}>
+                  {metric.difference === null ? "—" : signedNumber(metric.difference)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="comparison-summary" aria-label="Resumo das conquistas">
+        <span><strong>{comparison.sharedUnlocked}</strong> visíveis em comum</span>
+        <span><strong>{comparison.primaryOnlyUnlocked.length}</strong> apenas no principal</span>
+        <span><strong>{comparison.secondaryOnlyUnlocked.length}</strong> apenas no segundo</span>
+      </div>
+
+      <div className="comparison-achievements" aria-label="Conquistas comparadas">
+        {comparison.achievements.map((achievement) => (
+          <article key={achievement.slug}>
+            <h3>{achievement.name}</h3>
+            <div>
+              <span className={achievement.primary.unlocked ? "is-visible" : ""}>
+                <small>@{primary.profile.login}</small>
+                {comparisonAchievementLabel(achievement.primary)}
+              </span>
+              <span className={achievement.secondary.unlocked ? "is-visible" : ""}>
+                <small>@{secondary.profile.login}</small>
+                {comparisonAchievementLabel(achievement.secondary)}
+              </span>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function Observatory() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const routeLogin = normalizedLogin(searchParams.get("login"));
+  const routeLogin = normalizeGitHubLogin(searchParams.get("login")) ?? DEFAULT_LOGIN;
+  const requestedComparisonLogin = normalizeGitHubLogin(searchParams.get("compare"));
+  const comparisonLogin =
+    requestedComparisonLogin?.toLowerCase() === routeLogin.toLowerCase()
+      ? null
+      : requestedComparisonLogin;
   const [audit, setAudit] = useState<AuditResponse | null>(null);
   const [error, setError] = useState("");
   const [errorLogin, setErrorLogin] = useState("");
+  const [searchError, setSearchError] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [copied, setCopied] = useState(false);
   const [localProgress, setLocalProgress] = useState<LocalProgressMemory | null>(null);
+  const [comparisonState, setComparisonState] = useState<ComparisonRequestState | null>(null);
+  const [comparisonFormError, setComparisonFormError] = useState("");
+  const [comparisonRefreshKey, setComparisonRefreshKey] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -265,6 +377,38 @@ function Observatory() {
     return () => controller.abort();
   }, [routeLogin, refreshKey]);
 
+  useEffect(() => {
+    if (!comparisonLogin) return;
+    const activeComparisonLogin: string = comparisonLogin;
+    const controller = new AbortController();
+
+    async function loadComparison() {
+      try {
+        const response = await fetch(`/api/audit?login=${encodeURIComponent(activeComparisonLogin)}`, {
+          signal: controller.signal,
+        });
+        const payload = (await response.json()) as AuditResponse & { error?: string };
+
+        if (!response.ok) {
+          throw new Error(payload.error || "Não foi possível analisar o segundo perfil.");
+        }
+        if (controller.signal.aborted) return;
+
+        setComparisonState({ login: activeComparisonLogin, audit: payload, error: "" });
+      } catch (caught) {
+        if (caught instanceof DOMException && caught.name === "AbortError") return;
+        setComparisonState({
+          login: activeComparisonLogin,
+          audit: null,
+          error: caught instanceof Error ? caught.message : "Falha inesperada na comparação.",
+        });
+      }
+    }
+
+    void loadComparison();
+    return () => controller.abort();
+  }, [comparisonLogin, comparisonRefreshKey]);
+
   const nextMission = useMemo(() => {
     if (!audit) return null;
     return [...audit.achievements]
@@ -282,12 +426,24 @@ function Observatory() {
   const routeIsPending = Boolean(audit && !auditIsCurrent);
   const errorIsCurrent = Boolean(error && errorLogin.toLowerCase() === routeLogin.toLowerCase());
   const showLoading = loading || (!auditIsCurrent && !errorIsCurrent);
+  const comparisonIsCurrent = Boolean(
+    comparisonLogin && comparisonState?.login.toLowerCase() === comparisonLogin.toLowerCase(),
+  );
+  const comparisonAudit = comparisonIsCurrent ? comparisonState?.audit ?? null : null;
+  const comparisonError = comparisonIsCurrent ? comparisonState?.error ?? "" : "";
+  const comparisonLoading = Boolean(comparisonLogin && !comparisonIsCurrent);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const requestedLogin = normalizedLogin(String(formData.get("login") ?? ""));
+    const requestedLogin = normalizeGitHubLogin(String(formData.get("login") ?? ""));
 
+    if (!requestedLogin) {
+      setSearchError("Use um login válido do GitHub, com até 39 caracteres.");
+      return;
+    }
+
+    setSearchError("");
     setLoading(true);
     setAudit(null);
     setLocalProgress(null);
@@ -303,9 +459,49 @@ function Observatory() {
     router.push(`/?login=${encodeURIComponent(requestedLogin)}`, { scroll: false });
   }
 
+  function submitComparison(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const requestedLogin = normalizeGitHubLogin(String(formData.get("compare") ?? ""));
+
+    if (!requestedLogin) {
+      setComparisonFormError("Informe um segundo login válido do GitHub.");
+      return;
+    }
+    if (requestedLogin.toLowerCase() === routeLogin.toLowerCase()) {
+      setComparisonFormError("Escolha um perfil diferente do principal.");
+      return;
+    }
+
+    setComparisonFormError("");
+    if (comparisonLogin?.toLowerCase() === requestedLogin.toLowerCase()) {
+      setComparisonState(null);
+      setComparisonRefreshKey((current) => current + 1);
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("login", audit?.profile.login ?? routeLogin);
+    params.set("compare", requestedLogin);
+    router.push(`/?${params.toString()}`, { scroll: false });
+  }
+
+  function removeComparison() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("login", audit?.profile.login ?? routeLogin);
+    params.delete("compare");
+    setComparisonFormError("");
+    router.push(`/?${params.toString()}`, { scroll: false });
+  }
+
   async function copyShareLink() {
     const shareUrl = new URL(window.location.href);
     shareUrl.searchParams.set("login", audit?.profile.login ?? routeLogin);
+    if (comparisonLogin) {
+      shareUrl.searchParams.set("compare", comparisonLogin);
+    } else {
+      shareUrl.searchParams.delete("compare");
+    }
 
     try {
       await navigator.clipboard.writeText(shareUrl.toString());
@@ -384,14 +580,18 @@ function Observatory() {
               name="login"
               defaultValue={routeLogin}
               placeholder="octocat"
+              maxLength={40}
               autoComplete="off"
               spellCheck={false}
+              aria-invalid={Boolean(searchError)}
+              aria-describedby={searchError ? "github-login-note github-login-error" : "github-login-note"}
             />
             <button type="submit" disabled={showLoading}>
               {showLoading ? "Mapeando…" : "Mapear perfil"}
             </button>
           </div>
-          <p>Somente dados públicos. Nenhum token é enviado pelo navegador.</p>
+          <p id="github-login-note">Somente dados públicos. Nenhum token é enviado pelo navegador.</p>
+          {searchError ? <p className="search-error" id="github-login-error" role="alert">{searchError}</p> : null}
         </form>
       </section>
 
@@ -448,6 +648,38 @@ function Observatory() {
             </div>
           </section>
 
+          <section className="comparison-control" aria-labelledby="comparison-control-title">
+            <div>
+              <p className="eyebrow">segunda constelação</p>
+              <h2 id="comparison-control-title">Coloque outro perfil na mesma órbita.</h2>
+              <p>A comparação entra na URL e usa somente sinais públicos equivalentes.</p>
+            </div>
+            <form onSubmit={submitComparison}>
+              <label htmlFor="comparison-login">Perfil para comparar</label>
+              <div>
+                <span aria-hidden="true">@</span>
+                <input
+                  key={comparisonLogin ?? "empty-comparison"}
+                  id="comparison-login"
+                  name="compare"
+                  defaultValue={comparisonLogin ?? ""}
+                  placeholder="monalisa"
+                  maxLength={40}
+                  autoComplete="off"
+                  spellCheck={false}
+                  aria-invalid={Boolean(comparisonFormError)}
+                  aria-describedby={comparisonFormError ? "comparison-form-error" : undefined}
+                />
+                <button type="submit" disabled={comparisonLoading}>
+                  {comparisonLoading ? "Consultando…" : comparisonLogin ? "Atualizar comparação" : "Comparar perfis"}
+                </button>
+              </div>
+              {comparisonFormError ? (
+                <p id="comparison-form-error" role="alert">{comparisonFormError}</p>
+              ) : null}
+            </form>
+          </section>
+
           <section className="metric-grid" aria-label="Métricas principais">
             <article>
               <span className="metric-index">01</span>
@@ -476,6 +708,25 @@ function Observatory() {
               <p>projetos públicos</p>
             </article>
           </section>
+
+          {comparisonLoading ? (
+            <section className="comparison-loading" aria-live="polite" aria-label="Carregando segundo perfil">
+              <span />
+              <p>Mapeando a segunda constelação…</p>
+            </section>
+          ) : null}
+
+          {comparisonError ? (
+            <section className="comparison-error" role="alert">
+              <strong>Não foi possível comparar agora.</strong>
+              <p>{comparisonError}</p>
+              <button type="button" onClick={removeComparison}>Remover segundo perfil</button>
+            </section>
+          ) : null}
+
+          {comparisonAudit ? (
+            <ProfileComparisonPanel primary={audit} secondary={comparisonAudit} onRemove={removeComparison} />
+          ) : null}
 
           {localProgress ? (
             <ProgressHistory audit={audit} memory={localProgress} onClear={clearLocalProgress} />

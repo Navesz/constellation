@@ -4,6 +4,13 @@ export type ParsedAchievement = {
   tier: number;
 };
 
+export const GITHUB_LOGIN_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
+
+export function normalizeGitHubLogin(value: string | null | undefined) {
+  const normalized = value?.trim().replace(/^@/, "") ?? "";
+  return GITHUB_LOGIN_PATTERN.test(normalized) ? normalized : null;
+}
+
 export function parseVisibleAchievements(html: string): ParsedAchievement[] {
   const bySlug = new Map<string, ParsedAchievement>();
   const achievementLink =

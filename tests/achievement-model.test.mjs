@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildAchievementProgress } from "../lib/achievements.ts";
-import { parseVisibleAchievements } from "../lib/github-profile.ts";
+import { normalizeGitHubLogin, parseVisibleAchievements } from "../lib/github-profile.ts";
+
+test("normalizes valid GitHub logins and rejects malformed values", () => {
+  assert.equal(normalizeGitHubLogin("  @octocat  "), "octocat");
+  assert.equal(normalizeGitHubLogin("a".repeat(39)), "a".repeat(39));
+  assert.equal(normalizeGitHubLogin("-invalid"), null);
+  assert.equal(normalizeGitHubLogin("invalid-"), null);
+  assert.equal(normalizeGitHubLogin("a".repeat(40)), null);
+});
 
 test("parses achievement tiers and keeps the highest duplicate tier", () => {
   const html = `

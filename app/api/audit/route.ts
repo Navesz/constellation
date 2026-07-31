@@ -1,5 +1,5 @@
 import { buildAchievementProgress } from "@/lib/achievements";
-import { parseVisibleAchievements } from "@/lib/github-profile";
+import { normalizeGitHubLogin, parseVisibleAchievements } from "@/lib/github-profile";
 
 const githubHeaders = {
   Accept: "application/vnd.github+json",
@@ -47,9 +47,9 @@ async function githubProfilePage(login: string): Promise<string> {
 }
 
 export async function GET(request: Request) {
-  const login = new URL(request.url).searchParams.get("login")?.trim().replace(/^@/, "") ?? "";
+  const login = normalizeGitHubLogin(new URL(request.url).searchParams.get("login"));
 
-  if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(login)) {
+  if (!login) {
     return Response.json({ error: "Informe um usuário válido do GitHub." }, { status: 400 });
   }
 

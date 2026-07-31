@@ -242,6 +242,11 @@ footer {
   line-height: 1.5;
 }
 
+.search > p.search-error {
+  margin-top: 6px;
+  color: var(--signal-dark);
+}
+
 .dashboard {
   padding-bottom: 80px;
 }
@@ -405,6 +410,343 @@ footer {
   line-height: 1.4;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+}
+
+.comparison-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.72fr);
+  gap: 44px;
+  align-items: end;
+  margin-top: 34px;
+  border: 1px solid var(--line);
+  padding: 24px;
+  background: rgba(255, 250, 240, 0.34);
+}
+
+.comparison-control h2 {
+  margin: 8px 0 6px;
+  font-size: clamp(1.45rem, 2.7vw, 2.6rem);
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.comparison-control > div > p:last-child {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.comparison-control form > label {
+  display: block;
+  margin-bottom: 8px;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.comparison-control form > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  border: 1px solid var(--ink);
+  background: var(--paper-bright);
+}
+
+.comparison-control form > div > span {
+  padding-left: 12px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+
+.comparison-control input {
+  min-width: 0;
+  height: 46px;
+  border: 0;
+  padding: 0 10px 0 5px;
+  background: transparent;
+  font-family: var(--mono);
+}
+
+.comparison-control button,
+.comparison-heading > button,
+.comparison-error button {
+  min-height: 46px;
+  border: 0;
+  padding: 0 15px;
+  color: var(--paper-bright);
+  background: var(--ink);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.comparison-control button:hover:not(:disabled),
+.comparison-heading > button:hover,
+.comparison-error button:hover {
+  color: var(--ink);
+  background: var(--signal);
+}
+
+.comparison-control button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.comparison-control form > p {
+  margin: 7px 0 0;
+  color: var(--signal-dark);
+  font-size: 0.7rem;
+}
+
+.comparison-loading,
+.comparison-error {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 52px;
+  border: 1px solid var(--line);
+  padding: 20px;
+  background: var(--paper-bright);
+}
+
+.comparison-loading > span {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--signal);
+  animation: pulse 900ms ease-in-out infinite alternate;
+}
+
+.comparison-loading p,
+.comparison-error p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.comparison-error {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  border-color: var(--signal-dark);
+}
+
+.comparison-panel {
+  margin-top: 52px;
+  border-top: 4px solid var(--ink);
+  border-bottom: 1px solid var(--line);
+  padding: clamp(28px, 4vw, 48px) 0;
+}
+
+.comparison-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 32px;
+  align-items: start;
+}
+
+.comparison-heading h2 {
+  margin: 14px 0 8px;
+  font-size: clamp(2.4rem, 6vw, 5.8rem);
+  line-height: 0.9;
+  letter-spacing: -0.075em;
+}
+
+.comparison-heading > div > p:last-child {
+  max-width: 640px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.comparison-identities {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  margin-top: 36px;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+
+.comparison-identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 18px;
+  background: var(--paper-bright);
+}
+
+.comparison-identity img {
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+}
+
+.comparison-identity strong,
+.comparison-identity a {
+  display: block;
+}
+
+.comparison-identity strong {
+  margin: 3px 0;
+  font-size: 1.05rem;
+}
+
+.comparison-identity a {
+  color: var(--signal-dark);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+}
+
+.comparison-warning {
+  margin: 18px 0 0;
+  border-left: 4px solid var(--signal);
+  padding: 10px 14px;
+  color: var(--ink-soft);
+  background: rgba(255, 92, 53, 0.08);
+  font-size: 0.78rem;
+}
+
+.comparison-table-wrap {
+  margin-top: 26px;
+  overflow-x: auto;
+}
+
+.comparison-table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+  background: rgba(255, 250, 240, 0.3);
+}
+
+.comparison-table caption {
+  padding: 0 0 9px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  text-align: left;
+}
+
+.comparison-table th,
+.comparison-table td {
+  border: 1px solid var(--line);
+  padding: 14px;
+  text-align: right;
+}
+
+.comparison-table th:first-child,
+.comparison-table tbody th {
+  text-align: left;
+}
+
+.comparison-table thead th {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.comparison-table tbody th {
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.comparison-table td {
+  font-family: var(--mono);
+  font-size: 1rem;
+}
+
+.comparison-table td:last-child {
+  color: #38673f;
+  font-weight: 700;
+}
+
+.comparison-table td.is-negative {
+  color: var(--signal-dark);
+}
+
+.comparison-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 28px;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+
+.comparison-summary span {
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 18px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.comparison-summary strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-size: 1.9rem;
+  letter-spacing: -0.06em;
+}
+
+.comparison-achievements {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  margin-top: 28px;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+
+.comparison-achievements article {
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 18px;
+}
+
+.comparison-achievements h3 {
+  margin: 0 0 14px;
+  font-size: 1.1rem;
+  letter-spacing: -0.03em;
+}
+
+.comparison-achievements article > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.comparison-achievements article > div > span {
+  min-width: 0;
+  border: 1px solid var(--line);
+  padding: 9px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  line-height: 1.4;
+}
+
+.comparison-achievements article > div > span.is-visible {
+  border-color: var(--ink);
+  color: var(--ink);
+  background: var(--acid);
+}
+
+.comparison-achievements small {
+  display: block;
+  margin-bottom: 4px;
+  overflow: hidden;
+  color: inherit;
+  font-size: 0.58rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .history-panel {
@@ -889,6 +1231,10 @@ footer {
   to { background-position: -220% 0; }
 }
 
+@keyframes pulse {
+  to { transform: scale(1.5); opacity: 0.48; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -903,6 +1249,8 @@ footer {
   .hero,
   .profile-strip,
   .data-warning,
+  .comparison-control,
+  .comparison-heading,
   .history-heading,
   .section-heading {
     grid-template-columns: 1fr;
@@ -940,6 +1288,10 @@ footer {
   .achievement-grid {
     grid-template-columns: 1fr;
   }
+
+  .comparison-achievements {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 600px) {
@@ -970,6 +1322,32 @@ footer {
 
   .metric-grid article {
     min-height: 150px;
+  }
+
+  .comparison-control {
+    padding: 18px;
+  }
+
+  .comparison-control form > div {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .comparison-control form button {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--ink);
+  }
+
+  .comparison-identities,
+  .comparison-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .comparison-heading > button {
+    justify-self: start;
+  }
+
+  .comparison-error {
+    grid-template-columns: 1fr;
   }
 
   .history-panel {
