@@ -104,10 +104,14 @@ test("returns an honest partial audit when secondary GitHub sources fail", async
 
 test("keeps the public profile lookup as the required source", async (context) => {
   const originalFetch = globalThis.fetch;
+  let requestCount = 0;
   context.after(() => {
     globalThis.fetch = originalFetch;
   });
-  globalThis.fetch = async () => new Response("Not found", { status: 404 });
+  globalThis.fetch = async () => {
+    requestCount += 1;
+    return new Response("Not found", { status: 404 });
+  };
 
   const worker = await loadWorker();
   const response = await worker.fetch(
@@ -120,6 +124,7 @@ test("keeps the public profile lookup as the required source", async (context) =
   assert.deepEqual(await response.json(), {
     error: "Perfil não encontrado no GitHub.",
   });
+  assert.equal(requestCount, 1);
 });
 
 test("returns visible achievements that are not yet in the internal catalog", async (context) => {
@@ -143,7 +148,9 @@ test("returns visible achievements that are not yet in the internal catalog", as
         public_repos: 8,
       });
     }
-    if (url.includes("/repos?")) return Response.json([]);
+    if (url.startsWith("https://api.github.com/search/repositories")) {
+      return Response.json({ items: [] });
+    }
     if (url.startsWith("https://api.github.com/search/issues")) {
       return Response.json({ total_count: 0 });
     }
@@ -170,4 +177,76 @@ test("returns visible achievements that are not yet in the internal catalog", as
   const discovered = audit.achievements.find((item) => item.slug === "mars-2020-contributor");
   assert.equal(discovered.catalogStatus, "discovered");
   assert.equal(discovered.progressLabel, "selo público detectado");
+});
+
+test("selects the top repository from a star-sorted search across the full profile", async (context) => {
+  const originalFetch = globalThis.fetch;
+  const requestedUrls = [];
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  globalThis.fetch = async (input, init) => {
+    const url = typeof input === "string" ? input : input.url;
+    requestedUrls.push(url);
+
+    if (url.startsWith("https://api.github.com/")) {
+      assert.equal(init?.headers?.["X-GitHub-Api-Version"], "2026-03-10");
+    }
+    if (url === "https://api.github.com/users/prolific-user") {
+      return Response.json({
+        login: "prolific-user",
+        name: "Prolific User",
+        bio: null,
+        avatar_url: "https://avatars.githubusercontent.com/u/1",
+        html_url: "https://github.com/prolific-user",
+        followers: 10,
+        following: 2,
+        public_repos: 240,
+      });
+    }
+    if (url.startsWith("https://api.github.com/search/repositories")) {
+      const search = new URL(url);
+      assert.equal(search.searchParams.get("q"), "user:prolific-user fork:false");
+      assert.equal(search.searchParams.get("sort"), "stars");
+      assert.equal(search.searchParams.get("order"), "desc");
+      assert.equal(search.searchParams.get("per_page"), "1");
+      return Response.json({
+        items: [{
+          name: "older-breakout-project",
+          description: "The strongest public project",
+          stargazers_count: 987,
+          forks_count: 42,
+          html_url: "https://github.com/prolific-user/older-breakout-project",
+        }],
+      });
+    }
+    if (url.startsWith("https://api.github.com/search/issues")) {
+      return Response.json({ total_count: 17 });
+    }
+    if (url === "https://github.com/prolific-user") return new Response("");
+
+    return new Response("Unexpected request", { status: 500 });
+  };
+
+  const worker = await loadWorker();
+  const response = await worker.fetch(
+    new Request("http://localhost/api/audit?login=prolific-user"),
+    environment,
+    executionContext,
+  );
+
+  assert.equal(response.status, 200);
+  const audit = await response.json();
+  assert.deepEqual(audit.metrics.topRepository, {
+    name: "older-breakout-project",
+    description: "The strongest public project",
+    stars: 987,
+    forks: 42,
+    url: "https://github.com/prolific-user/older-breakout-project",
+  });
+  assert.equal(
+    requestedUrls.some((url) => url.includes("/users/prolific-user/repos")),
+    false,
+  );
 });

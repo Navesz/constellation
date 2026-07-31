@@ -4,7 +4,7 @@ import { normalizeGitHubLogin, parseVisibleAchievements } from "@/lib/github-pro
 const githubHeaders = {
   Accept: "application/vnd.github+json",
   "User-Agent": "constellation-profile-observatory",
-  "X-GitHub-Api-Version": "2022-11-28",
+  "X-GitHub-Api-Version": "2026-03-10",
 };
 
 type GitHubUser = {
@@ -24,7 +24,10 @@ type GitHubRepository = {
   stargazers_count: number;
   forks_count: number;
   html_url: string;
-  fork: boolean;
+};
+
+type GitHubRepositorySearch = {
+  items: GitHubRepository[];
 };
 
 async function githubJson<T>(url: string): Promise<T> {
@@ -55,10 +58,10 @@ export async function GET(request: Request) {
 
   try {
     const encodedLogin = encodeURIComponent(login);
-    const [profileResult, repositoriesResult, mergedSearchResult, profilePageResult] = await Promise.allSettled([
-      githubJson<GitHubUser>(`https://api.github.com/users/${encodedLogin}`),
-      githubJson<GitHubRepository[]>(
-        `https://api.github.com/users/${encodedLogin}/repos?type=owner&sort=updated&per_page=100`,
+    const profile = await githubJson<GitHubUser>(`https://api.github.com/users/${encodedLogin}`);
+    const [repositorySearchResult, mergedSearchResult, profilePageResult] = await Promise.allSettled([
+      githubJson<GitHubRepositorySearch>(
+        `https://api.github.com/search/repositories?q=${encodeURIComponent(`user:${login} fork:false`)}&sort=stars&order=desc&per_page=1`,
       ),
       githubJson<{ total_count: number }>(
         `https://api.github.com/search/issues?q=${encodeURIComponent(`is:pr author:${login} is:merged`)}`,
@@ -66,15 +69,13 @@ export async function GET(request: Request) {
       githubProfilePage(encodedLogin),
     ]);
 
-    if (profileResult.status === "rejected") throw profileResult.reason;
-
-    const profile = profileResult.value;
-    const repositories = repositoriesResult.status === "fulfilled" ? repositoriesResult.value : null;
+    const repositorySearch =
+      repositorySearchResult.status === "fulfilled" ? repositorySearchResult.value : null;
     const mergedSearch = mergedSearchResult.status === "fulfilled" ? mergedSearchResult.value : null;
     const profilePage = profilePageResult.status === "fulfilled" ? profilePageResult.value : null;
     const warnings: string[] = [];
 
-    if (repositories === null) {
+    if (repositorySearch === null) {
       warnings.push("Os repositórios não responderam; estrelas e projeto principal ficaram indisponíveis.");
     }
     if (mergedSearch === null) {
@@ -85,17 +86,13 @@ export async function GET(request: Request) {
     }
 
     const visibleAchievements = profilePage === null ? [] : parseVisibleAchievements(profilePage);
-    const topRepository = repositories
-      ? (repositories
-          .filter((repository) => !repository.fork)
-          .sort((a, b) => b.stargazers_count - a.stargazers_count)[0] ?? null)
-      : null;
+    const topRepository = repositorySearch?.items[0] ?? null;
 
     const achievements = buildAchievementProgress(
       visibleAchievements,
       {
         mergedPullRequests: mergedSearch?.total_count,
-        topRepositoryStars: repositories === null ? undefined : topRepository?.stargazers_count ?? 0,
+        topRepositoryStars: repositorySearch === null ? undefined : topRepository?.stargazers_count ?? 0,
       },
       {
         achievementScanAvailable: profilePage !== null,
@@ -129,7 +126,7 @@ export async function GET(request: Request) {
         sources: {
           achievements: profilePage === null ? "unavailable" : "available",
           mergedPullRequests: mergedSearch === null ? "unavailable" : "available",
-          repositories: repositories === null ? "unavailable" : "available",
+          repositories: repositorySearch === null ? "unavailable" : "available",
         },
         visibleAchievementCount: profilePage === null ? null : visibleAchievements.length,
         achievements,
