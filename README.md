@@ -13,6 +13,10 @@ combina dados da API pública com as conquistas visíveis no perfil para mostrar
 - repositório autoral com mais estrelas em todo o perfil, mesmo quando existem mais de 100 projetos;
 - uma próxima ação legítima, sem incentivar spam.
 
+O mapa pode ser filtrado por conquistas visíveis, sinais com próximo marco
+mensurável ou estados sem contador público. Os filtros se sobrepõem de propósito
+e nunca alteram a classificação de confiança da auditoria.
+
 Cada auditoria tem uma URL compartilhável no formato `/?login=octocat`. O
 painel também separa contagens medidas pela API de mínimos confirmados pelo
 nível do selo, para não apresentar estimativas como valores exatos.

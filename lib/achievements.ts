@@ -227,7 +227,9 @@ export type ActionableAchievement = AchievementProgress & {
   nextThreshold: number;
 };
 
-function hasComparableProgress(achievement: AchievementProgress): achievement is ActionableAchievement {
+export function isActionableAchievement(
+  achievement: AchievementProgress,
+): achievement is ActionableAchievement {
   return (
     achievement.current !== null &&
     achievement.nextThreshold !== null &&
@@ -237,7 +239,7 @@ function hasComparableProgress(achievement: AchievementProgress): achievement is
 
 export function selectNextMission(achievements: AchievementProgress[]): ActionableAchievement | null {
   return [...achievements]
-    .filter(hasComparableProgress)
+    .filter(isActionableAchievement)
     .sort((left, right) => {
       const leftRemaining = Math.max(0, left.nextThreshold - left.current);
       const rightRemaining = Math.max(0, right.nextThreshold - right.current);

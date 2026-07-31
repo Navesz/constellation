@@ -1345,11 +1345,103 @@ footer {
   background: transparent;
 }
 
+.achievement-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin: 0 0 16px;
+}
+
+.achievement-controls > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  padding: 1px;
+  background: var(--line);
+}
+
+.achievement-controls button {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  padding: 0 12px;
+  color: var(--ink);
+  background: var(--paper-bright);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: color 160ms ease, background 160ms ease;
+}
+
+.achievement-controls button:hover,
+.achievement-controls button:focus-visible,
+.achievement-controls button[aria-pressed="true"] {
+  color: var(--paper-bright);
+  background: var(--ink);
+}
+
+.achievement-controls button span {
+  min-width: 20px;
+  border-radius: 999px;
+  padding: 2px 5px;
+  color: var(--ink);
+  background: var(--acid);
+  font-size: 0.55rem;
+  text-align: center;
+}
+
+.achievement-controls > p {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .achievement-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   border-top: 1px solid var(--line);
   border-left: 1px solid var(--line);
+}
+
+.achievement-empty {
+  min-height: 250px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  border: 1px dashed var(--line-strong);
+  padding: 32px;
+  text-align: center;
+}
+
+.achievement-empty strong {
+  font-size: 1.25rem;
+}
+
+.achievement-empty p {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.achievement-empty button {
+  margin-top: 20px;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  padding: 3px 0;
+  color: var(--signal-dark);
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .achievement {
@@ -1874,6 +1966,11 @@ footer {
     grid-template-columns: 1fr;
   }
 
+  .achievement-controls {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .comparison-achievements {
     grid-template-columns: 1fr;
   }
@@ -1923,6 +2020,15 @@ footer {
 
   .metric-grid article {
     min-height: 150px;
+  }
+
+  .achievement-controls > div {
+    width: 100%;
+  }
+
+  .achievement-controls button {
+    flex: 1 1 calc(50% - 1px);
+    justify-content: space-between;
   }
 
   .comparison-control {
