@@ -34,7 +34,14 @@ import {
   parseAuditHistoryRecordingPreference,
   serializeAuditHistoryRecordingPreference,
 } from "@/lib/audit-history-preference";
-import { selectNextMission, type AchievementProgress, type AuditResponse } from "@/lib/achievements";
+import {
+  ACHIEVEMENT_CATALOG_REVIEWED_AT,
+  GITHUB_ACHIEVEMENTS_REFERENCE_URL,
+  achievementCriteriaLabel,
+  selectNextMission,
+  type AchievementProgress,
+  type AuditResponse,
+} from "@/lib/achievements";
 import {
   ACHIEVEMENT_FILTER_OPTIONS,
   countAchievementFilters,
@@ -398,15 +405,18 @@ function AchievementCard({
               href={achievement.documentationUrl}
               target="_blank"
               rel="noreferrer"
-              aria-label={`Abrir a fonte oficial de ${achievement.name}`}
+              aria-label={`Abrir o contexto oficial de ${achievement.name}`}
             >
-              Fonte oficial <span aria-hidden="true">↗</span>
+              Contexto oficial <span aria-hidden="true">↗</span>
             </a>
           ) : null}
         </span>
       ) : null}
       <span className={`confidence confidence-${achievement.measurementKind}`}>
         {achievement.confidenceLabel}
+      </span>
+      <span className="criteria-confidence">
+        {achievementCriteriaLabel(achievement)}
       </span>
       <ProgressBar achievement={achievement} />
       <div className="achievement-footer">
@@ -1515,7 +1525,17 @@ function Observatory() {
               <p className="eyebrow">mapa de conquistas</p>
               <h2>Progresso, não teatro.</h2>
             </div>
-            <p>Selos novos ou históricos também entram no mapa, sem inventar critérios ou progresso que o GitHub não publica.</p>
+            <p>
+              Selos novos ou históricos também entram no mapa, sem inventar critérios ou progresso que o GitHub não publica.
+              <a
+                className="catalog-reference"
+                href={GITHUB_ACHIEVEMENTS_REFERENCE_URL}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Catálogo revisto em {new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(`${ACHIEVEMENT_CATALOG_REVIEWED_AT}T00:00:00Z`))} · recurso em prévia <span aria-hidden="true">↗</span>
+              </a>
+            </p>
           </section>
 
           <aside className="trust-legend" aria-label="Legenda de confiabilidade dos dados">

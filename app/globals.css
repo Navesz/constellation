@@ -1663,6 +1663,29 @@ footer {
   border-style: dashed;
 }
 
+.criteria-confidence {
+  align-self: flex-start;
+  margin: -14px 0 22px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.catalog-reference {
+  display: block;
+  width: fit-content;
+  margin-top: 12px;
+  color: var(--signal-dark);
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-underline-offset: 4px;
+}
+
 .progress {
   height: 4px;
   margin-top: auto;

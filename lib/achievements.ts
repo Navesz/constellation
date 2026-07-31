@@ -5,6 +5,11 @@ export type VisibleAchievement = {
 };
 
 export const AUDIT_SCHEMA_VERSION = 2;
+export const ACHIEVEMENT_CATALOG_REVIEWED_AT = "2026-07-31";
+export const GITHUB_ACHIEVEMENTS_REFERENCE_URL =
+  "https://docs.github.com/en/account-and-profile/reference/profile-reference#earning-achievements";
+export const GITHUB_COMMUNITY_ACHIEVEMENT_NOTICE_URL =
+  "https://github.com/orgs/community/discussions/18796";
 
 export type AchievementEarningStatus = "active" | "historical" | "unknown";
 
@@ -122,10 +127,10 @@ export const achievementDefinitions: AchievementDefinition[] = [
     name: "Galaxy Brain",
     slug: "galaxy-brain",
     description: "Ter respostas aceitas em perguntas do GitHub Discussions.",
-    nextAction: "Responda perguntas reais com contexto, fontes e uma solução reproduzível.",
+    nextAction: "Responda perguntas reais em Discussions de projetos onde você conhece o contexto; a Community oficial não concede mais conquistas para conter spam.",
     thresholds: [2, 8, 16, 32],
     earningStatus: "active",
-    documentationUrl: null,
+    documentationUrl: GITHUB_COMMUNITY_ACHIEVEMENT_NOTICE_URL,
   },
   {
     name: "Starstruck",
@@ -174,6 +179,16 @@ export const achievementDefinitions: AchievementDefinition[] = [
     documentationUrl: "https://archiveprogram.github.com/arctic-vault/",
   },
 ];
+
+export function achievementCriteriaLabel(
+  achievement: Pick<AchievementProgress, "catalogStatus" | "earningStatus" | "documentationUrl">,
+) {
+  if (achievement.catalogStatus === "discovered") return "critério ainda não catalogado";
+  if (achievement.earningStatus === "historical" && achievement.documentationUrl) {
+    return "evento histórico com contexto oficial";
+  }
+  return "critério catalogado; recurso do GitHub em prévia pública";
+}
 
 export function buildAchievementProgress(
   visibleAchievements: VisibleAchievement[],

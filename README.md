@@ -18,6 +18,14 @@ O mapa pode ser filtrado por conquistas visíveis, sinais com próximo marco
 mensurável ou estados sem contador público. Os filtros se sobrepõem de propósito
 e nunca alteram a classificação de confiança da auditoria.
 
+O catálogo de critérios foi revisto em 31 de julho de 2026. O próprio GitHub
+mantém Achievements em prévia pública e não oferece uma API oficial nem um
+contrato completo de limiares; por isso, cada cartão e relatório distingue
+critérios catalogados, eventos históricos com contexto oficial e selos ainda
+sem critério conhecido. A orientação de Galaxy Brain também registra que a
+Community oficial deixou de conceder conquistas para conter spam, sem confundir
+essa restrição com Discussions legítimas de outros projetos.
+
 Cada conquista visível oferece um link direto para seu detalhe no GitHub, onde
 o próprio GitHub pode exibir os eventos associados conforme a permissão de quem
 abre a página. Esses links também acompanham o relatório Markdown e a comparação.

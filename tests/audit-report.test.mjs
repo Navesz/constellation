@@ -139,7 +139,8 @@ test("identifies historical achievements and links their official context", () =
     markdown,
     /\[eventos no GitHub\]\(https:\/\/github\.com\/octocat\?achievement=mars-2020-contributor&tab=achievements\)/,
   );
-  assert.match(markdown, /\[fonte oficial\]\(https:\/\/docs\.github\.com\//);
+  assert.match(markdown, /\[contexto oficial\]\(https:\/\/docs\.github\.com\//);
+  assert.match(markdown, /evento histórico com contexto oficial/);
   assert.doesNotMatch(markdown, /Próximo marco: 1\./);
 });
 
@@ -173,4 +174,16 @@ test("includes an honest comparison and omits deltas for unavailable signals", (
 test("creates stable, sanitized report filenames", () => {
   assert.equal(auditReportFilename("Octo_Cat", "Hub Bot"), "constellation-octo-cat-vs-hub-bot.md");
   assert.equal(auditReportFilename("***"), "constellation-perfil.md");
+});
+
+test("makes catalog provenance and preview status explicit", () => {
+  const markdown = buildAuditMarkdown({
+    audit: audit(),
+    shareUrl: "https://example.test/?login=octocat",
+  });
+
+  assert.match(markdown, /Catálogo revisto em 2026-07-31/);
+  assert.match(markdown, /GitHub mantém Achievements em prévia pública/);
+  assert.match(markdown, /critério catalogado; recurso do GitHub em prévia pública/);
+  assert.match(markdown, /\[Contexto oficial\]\(https:\/\/docs\.github\.com\//);
 });

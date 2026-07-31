@@ -1,4 +1,11 @@
-import { selectNextMission, type AchievementProgress, type AuditResponse } from "./achievements.ts";
+import {
+  ACHIEVEMENT_CATALOG_REVIEWED_AT,
+  GITHUB_ACHIEVEMENTS_REFERENCE_URL,
+  achievementCriteriaLabel,
+  selectNextMission,
+  type AchievementProgress,
+  type AuditResponse,
+} from "./achievements.ts";
 import { buildAuditEvidenceSources } from "./audit-sources.ts";
 import { constellationExportFilename } from "./export-filename.ts";
 import { githubAchievementDetailUrl } from "./github-profile.ts";
@@ -50,9 +57,10 @@ function reportAchievement(achievement: AchievementProgress, profileLogin: strin
     achievementStatus(achievement),
     escapeMarkdown(achievement.progressLabel),
     escapeMarkdown(achievement.confidenceLabel),
+    escapeMarkdown(achievementCriteriaLabel(achievement)),
   ];
   const documentation = achievement.documentationUrl
-    ? ` · [fonte oficial](${achievement.documentationUrl})`
+    ? ` · [contexto oficial](${achievement.documentationUrl})`
     : "";
   const detailUrl = achievement.unlocked
     ? githubAchievementDetailUrl(profileLogin, achievement.slug)
@@ -129,7 +137,13 @@ export function buildAuditMarkdown({ audit, comparison, shareUrl }: AuditReportO
 
   appendEvidenceTable(lines, audit, "## Fontes e método");
 
-  lines.push("", "## Conquistas", "");
+  lines.push(
+    "",
+    "## Conquistas",
+    "",
+    `> Catálogo revisto em ${ACHIEVEMENT_CATALOG_REVIEWED_AT}. O GitHub mantém Achievements em prévia pública e pode alterar critérios. [Contexto oficial](${GITHUB_ACHIEVEMENTS_REFERENCE_URL}).`,
+    "",
+  );
   if (audit.achievements.length > 0) {
     lines.push(...audit.achievements.map((achievement) => reportAchievement(achievement, profile.login)));
   } else if (sources.achievements === "unavailable") {

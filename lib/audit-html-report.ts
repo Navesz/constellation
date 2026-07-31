@@ -1,4 +1,11 @@
-import { selectNextMission, type AchievementProgress, type AuditResponse } from "./achievements.ts";
+import {
+  ACHIEVEMENT_CATALOG_REVIEWED_AT,
+  GITHUB_ACHIEVEMENTS_REFERENCE_URL,
+  achievementCriteriaLabel,
+  selectNextMission,
+  type AchievementProgress,
+  type AuditResponse,
+} from "./achievements.ts";
 import { buildAuditEvidenceSources } from "./audit-sources.ts";
 import { constellationExportFilename } from "./export-filename.ts";
 import { githubAchievementDetailUrl } from "./github-profile.ts";
@@ -92,7 +99,7 @@ function renderAchievement(achievement: AchievementProgress, profileLogin: strin
     : null;
   const links = [
     eventUrl ? link("eventos no GitHub", eventUrl) : null,
-    achievement.documentationUrl ? link("fonte oficial", achievement.documentationUrl) : null,
+    achievement.documentationUrl ? link("contexto oficial", achievement.documentationUrl) : null,
   ].filter(Boolean).join(" · ");
 
   return `
@@ -105,6 +112,7 @@ function renderAchievement(achievement: AchievementProgress, profileLogin: strin
             <dl>
               <div><dt>Progresso</dt><dd>${escapeHtml(achievement.progressLabel)}</dd></div>
               <div><dt>Confiança</dt><dd>${escapeHtml(achievement.confidenceLabel)}</dd></div>
+              <div><dt>Critério</dt><dd>${escapeHtml(achievementCriteriaLabel(achievement))}</dd></div>
             </dl>
             ${links ? `<p class="links">${links}</p>` : ""}
           </article>`;
@@ -263,6 +271,7 @@ export function buildAuditHtml({ audit, comparison, shareUrl }: AuditReportOptio
     ${renderEvidenceTable(audit, "Fontes e método")}
     <section>
       <h2>Conquistas</h2>
+      <p class="lead">Catálogo revisto em ${escapeHtml(ACHIEVEMENT_CATALOG_REVIEWED_AT)}. O GitHub mantém Achievements em prévia pública e pode alterar critérios. ${link("Contexto oficial", GITHUB_ACHIEVEMENTS_REFERENCE_URL)}.</p>
       <div class="achievements">${achievements}</div>
     </section>
     <section>

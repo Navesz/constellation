@@ -79,6 +79,8 @@ test("builds a self-contained, printable HTML report", () => {
   assert.match(html, /PRs públicos mesclados[\s\S]*12/);
   assert.match(html, /hello-world/);
   assert.match(html, /Pull Shark/);
+  assert.match(html, /critério catalogado; recurso do GitHub em prévia pública/);
+  assert.match(html, /Catálogo revisto em 2026-07-31/);
   assert.match(html, /Próximo marco: 16/);
   assert.match(html, /Fontes e método/);
   assert.match(html, /@media print/);
