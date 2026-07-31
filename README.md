@@ -13,6 +13,11 @@ Cada auditoria tem uma URL compartilhável no formato `/?login=octocat`. O
 painel também separa contagens medidas pela API de mínimos confirmados pelo
 nível do selo, para não apresentar estimativas como valores exatos.
 
+O perfil público é a única fonte obrigatória. Se a busca de pull requests, a
+lista de repositórios ou a leitura dos selos falhar temporariamente, a auditoria
+continua com os dados disponíveis e identifica cada lacuna em vez de exibir
+zeros enganosos.
+
 ## Desenvolvimento
 
 ```bash

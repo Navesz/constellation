@@ -19,10 +19,13 @@ export type AchievementProgress = AchievementDefinition & {
   current: number;
   nextThreshold: number | null;
   progressLabel: string;
-  measurementKind: "measured" | "confirmed-minimum" | "not-public";
+  badgeStatus: "visible" | "not-visible" | "unavailable";
+  measurementKind: "measured" | "confirmed-minimum" | "not-public" | "unavailable";
   currentIsMinimum: boolean;
   confidenceLabel: string;
 };
+
+export type AuditSourceAvailability = "available" | "unavailable";
 
 export type AuditResponse = {
   profile: {
@@ -36,7 +39,7 @@ export type AuditResponse = {
     publicRepos: number;
   };
   metrics: {
-    mergedPullRequests: number;
+    mergedPullRequests: number | null;
     topRepository: null | {
       name: string;
       description: string | null;
@@ -45,8 +48,14 @@ export type AuditResponse = {
       url: string;
     };
   };
-  visibleAchievementCount: number;
+  sources: {
+    achievements: AuditSourceAvailability;
+    mergedPullRequests: AuditSourceAvailability;
+    repositories: AuditSourceAvailability;
+  };
+  visibleAchievementCount: number | null;
   achievements: AchievementProgress[];
+  warnings: string[];
   generatedAt: string;
 };
 
@@ -106,9 +115,11 @@ export const achievementDefinitions: AchievementDefinition[] = [
 
 export function buildAchievementProgress(
   visibleAchievements: VisibleAchievement[],
-  metrics: { mergedPullRequests: number; topRepositoryStars: number },
+  metrics: { mergedPullRequests?: number; topRepositoryStars?: number },
+  options: { achievementScanAvailable?: boolean } = {},
 ): AchievementProgress[] {
   const visibleBySlug = new Map(visibleAchievements.map((item) => [item.slug, item]));
+  const achievementScanAvailable = options.achievementScanAvailable ?? true;
 
   return achievementDefinitions.map((definition) => {
     const visible = visibleBySlug.get(definition.slug);
@@ -119,20 +130,33 @@ export function buildAchievementProgress(
     const current = Math.max(measuredCurrent ?? 0, tierFloor ?? 0);
     const tier = visible?.tier ?? 0;
     const unlocked = Boolean(visible);
+    const badgeStatus = visible
+      ? "visible"
+      : achievementScanAvailable
+        ? "not-visible"
+        : "unavailable";
     const nextThreshold = unlocked
       ? definition.thresholds[tier] ?? null
-      : definition.thresholds[0] ?? null;
+      : measuredCurrent !== undefined
+        ? definition.thresholds.find((threshold) => threshold > measuredCurrent) ?? null
+        : achievementScanAvailable
+          ? definition.thresholds[0] ?? null
+          : null;
     const currentIsMinimum = Boolean(visible) && (measuredCurrent === undefined || tierFloor > measuredCurrent);
     const measurementKind = currentIsMinimum
       ? "confirmed-minimum"
       : measuredCurrent !== undefined
         ? "measured"
+        : !achievementScanAvailable
+          ? "unavailable"
         : "not-public";
     const confidenceLabel =
       measurementKind === "confirmed-minimum"
         ? "mínimo confirmado pelo selo"
         : measurementKind === "measured"
           ? "medido com dados públicos"
+          : measurementKind === "unavailable"
+            ? "fonte temporariamente indisponível"
           : unlocked
             ? "desbloqueio confirmado; contador privado"
             : "contador não é público";
@@ -140,7 +164,11 @@ export function buildAchievementProgress(
       ? `${currentIsMinimum ? "pelo menos " : ""}${current} de ${nextThreshold}`
       : unlocked
         ? "marco concluído"
-        : "sem marco público";
+        : measuredCurrent !== undefined && current > 0
+          ? `${current} medidos; selo não confirmado`
+          : badgeStatus === "unavailable"
+            ? "estado temporariamente indisponível"
+            : "sem marco público";
 
     return {
       ...definition,
@@ -149,6 +177,7 @@ export function buildAchievementProgress(
       current,
       nextThreshold,
       progressLabel,
+      badgeStatus,
       measurementKind,
       currentIsMinimum,
       confidenceLabel,

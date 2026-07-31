@@ -31,10 +31,19 @@ async function githubJson<T>(url: string): Promise<T> {
   const response = await fetch(url, { headers: githubHeaders });
   if (!response.ok) {
     if (response.status === 404) throw new Error("PROFILE_NOT_FOUND");
-    if (response.status === 403) throw new Error("GITHUB_RATE_LIMIT");
+    if (response.status === 403 || response.status === 429) throw new Error("GITHUB_RATE_LIMIT");
     throw new Error(`GITHUB_${response.status}`);
   }
   return response.json() as Promise<T>;
+}
+
+async function githubProfilePage(login: string): Promise<string> {
+  const response = await fetch(`https://github.com/${login}`, {
+    headers: { "User-Agent": githubHeaders["User-Agent"] },
+  });
+
+  if (!response.ok) throw new Error(`PROFILE_PAGE_${response.status}`);
+  return response.text();
 }
 
 export async function GET(request: Request) {
@@ -46,7 +55,7 @@ export async function GET(request: Request) {
 
   try {
     const encodedLogin = encodeURIComponent(login);
-    const [profile, repositories, mergedSearch, profilePage] = await Promise.all([
+    const [profileResult, repositoriesResult, mergedSearchResult, profilePageResult] = await Promise.allSettled([
       githubJson<GitHubUser>(`https://api.github.com/users/${encodedLogin}`),
       githubJson<GitHubRepository[]>(
         `https://api.github.com/users/${encodedLogin}/repos?type=owner&sort=updated&per_page=100`,
@@ -54,23 +63,44 @@ export async function GET(request: Request) {
       githubJson<{ total_count: number }>(
         `https://api.github.com/search/issues?q=${encodeURIComponent(`is:pr author:${login} is:merged`)}`,
       ),
-      fetch(`https://github.com/${encodedLogin}`, {
-        headers: { "User-Agent": githubHeaders["User-Agent"] },
-      }).then((response) => {
-        if (!response.ok) throw new Error("PROFILE_PAGE_UNAVAILABLE");
-        return response.text();
-      }),
+      githubProfilePage(encodedLogin),
     ]);
 
-    const visibleAchievements = parseVisibleAchievements(profilePage);
-    const topRepository = repositories
-      .filter((repository) => !repository.fork)
-      .sort((a, b) => b.stargazers_count - a.stargazers_count)[0] ?? null;
+    if (profileResult.status === "rejected") throw profileResult.reason;
 
-    const achievements = buildAchievementProgress(visibleAchievements, {
-      mergedPullRequests: mergedSearch.total_count,
-      topRepositoryStars: topRepository?.stargazers_count ?? 0,
-    });
+    const profile = profileResult.value;
+    const repositories = repositoriesResult.status === "fulfilled" ? repositoriesResult.value : null;
+    const mergedSearch = mergedSearchResult.status === "fulfilled" ? mergedSearchResult.value : null;
+    const profilePage = profilePageResult.status === "fulfilled" ? profilePageResult.value : null;
+    const warnings: string[] = [];
+
+    if (repositories === null) {
+      warnings.push("Os repositórios não responderam; estrelas e projeto principal ficaram indisponíveis.");
+    }
+    if (mergedSearch === null) {
+      warnings.push("A busca de pull requests não respondeu; esse contador ficou indisponível.");
+    }
+    if (profilePage === null) {
+      warnings.push("Os selos públicos não responderam; o estado das conquistas pode estar incompleto.");
+    }
+
+    const visibleAchievements = profilePage === null ? [] : parseVisibleAchievements(profilePage);
+    const topRepository = repositories
+      ? (repositories
+          .filter((repository) => !repository.fork)
+          .sort((a, b) => b.stargazers_count - a.stargazers_count)[0] ?? null)
+      : null;
+
+    const achievements = buildAchievementProgress(
+      visibleAchievements,
+      {
+        mergedPullRequests: mergedSearch?.total_count,
+        topRepositoryStars: repositories === null ? undefined : topRepository?.stargazers_count ?? 0,
+      },
+      {
+        achievementScanAvailable: profilePage !== null,
+      },
+    );
 
     return Response.json(
       {
@@ -85,7 +115,7 @@ export async function GET(request: Request) {
           publicRepos: profile.public_repos,
         },
         metrics: {
-          mergedPullRequests: mergedSearch.total_count,
+          mergedPullRequests: mergedSearch?.total_count ?? null,
           topRepository: topRepository
             ? {
                 name: topRepository.name,
@@ -96,13 +126,21 @@ export async function GET(request: Request) {
               }
             : null,
         },
-        visibleAchievementCount: visibleAchievements.length,
+        sources: {
+          achievements: profilePage === null ? "unavailable" : "available",
+          mergedPullRequests: mergedSearch === null ? "unavailable" : "available",
+          repositories: repositories === null ? "unavailable" : "available",
+        },
+        visibleAchievementCount: profilePage === null ? null : visibleAchievements.length,
         achievements,
+        warnings,
         generatedAt: new Date().toISOString(),
       },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+          "Cache-Control": warnings.length
+            ? "public, s-maxage=30, stale-while-revalidate=60"
+            : "public, s-maxage=300, stale-while-revalidate=600",
         },
       },
     );

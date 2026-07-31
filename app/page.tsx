@@ -42,15 +42,29 @@ function ProgressBar({ achievement }: { achievement: AchievementProgress }) {
 }
 
 function AchievementCard({ achievement }: { achievement: AchievementProgress }) {
+  const statusLabel =
+    achievement.badgeStatus === "unavailable"
+      ? "Selo indisponível"
+      : achievement.unlocked
+        ? `Desbloqueada · nível ${achievement.tier}`
+        : "Em rota";
+  const milestoneLabel = achievement.nextThreshold
+    ? `Próximo: ${achievement.nextThreshold}`
+    : achievement.badgeStatus === "unavailable"
+      ? "Aguardando fonte"
+      : achievement.unlocked
+        ? "Concluída"
+        : "Sem marco";
+
   return (
-    <article className={`achievement ${achievement.unlocked ? "is-unlocked" : ""}`}>
+    <article
+      className={`achievement ${achievement.unlocked ? "is-unlocked" : ""} ${achievement.badgeStatus === "unavailable" ? "is-unknown" : ""}`}
+    >
       <div className="achievement-topline">
         <span className="achievement-glyph" aria-hidden="true">
           {achievementGlyphs[achievement.slug] ?? "·"}
         </span>
-        <span className="eyebrow">
-          {achievement.unlocked ? `Desbloqueada · nível ${achievement.tier}` : "Em rota"}
-        </span>
+        <span className="eyebrow">{statusLabel}</span>
       </div>
       <h3>{achievement.name}</h3>
       <p>{achievement.description}</p>
@@ -60,7 +74,7 @@ function AchievementCard({ achievement }: { achievement: AchievementProgress }) 
       <ProgressBar achievement={achievement} />
       <div className="achievement-footer">
         <span>{achievement.progressLabel}</span>
-        <span>{achievement.nextThreshold ? `Próximo: ${achievement.nextThreshold}` : "Concluída"}</span>
+        <span>{milestoneLabel}</span>
       </div>
     </article>
   );
@@ -108,7 +122,7 @@ function Observatory() {
   const nextMission = useMemo(() => {
     if (!audit) return null;
     return [...audit.achievements]
-      .filter((achievement) => achievement.nextThreshold)
+      .filter((achievement) => achievement.nextThreshold && achievement.measurementKind !== "unavailable")
       .sort((a, b) => {
         const aRemaining = Math.max(0, (a.nextThreshold ?? a.current) - a.current);
         const bRemaining = Math.max(0, (b.nextThreshold ?? b.current) - b.current);
@@ -221,6 +235,18 @@ function Observatory() {
 
       {audit ? (
         <div className="dashboard">
+          {audit.warnings.length ? (
+            <section className="data-warning" role="status" aria-label="Auditoria com dados parciais">
+              <div>
+                <span className="eyebrow">leitura resiliente</span>
+                <strong>O perfil continua disponível, mas algumas fontes não responderam.</strong>
+              </div>
+              <ul>
+                {audit.warnings.map((warning) => <li key={warning}>{warning}</li>)}
+              </ul>
+            </section>
+          ) : null}
+
           <section className="profile-strip" aria-label="Resumo do perfil">
             <div className="identity">
               <Image src={audit.profile.avatarUrl} alt="" width={72} height={72} unoptimized />
@@ -247,17 +273,23 @@ function Observatory() {
           <section className="metric-grid" aria-label="Métricas principais">
             <article>
               <span className="metric-index">01</span>
-              <strong>{audit.visibleAchievementCount}</strong>
+              <strong className={audit.visibleAchievementCount === null ? "metric-unavailable" : undefined}>
+                {audit.visibleAchievementCount ?? "—"}
+              </strong>
               <p>conquistas visíveis</p>
             </article>
             <article>
               <span className="metric-index">02</span>
-              <strong>{audit.metrics.mergedPullRequests}</strong>
+              <strong className={audit.metrics.mergedPullRequests === null ? "metric-unavailable" : undefined}>
+                {audit.metrics.mergedPullRequests ?? "—"}
+              </strong>
               <p>pull requests públicos mesclados</p>
             </article>
             <article>
               <span className="metric-index">03</span>
-              <strong>{audit.metrics.topRepository?.stars ?? 0}</strong>
+              <strong className={audit.sources.repositories === "unavailable" ? "metric-unavailable" : undefined}>
+                {audit.sources.repositories === "unavailable" ? "—" : audit.metrics.topRepository?.stars ?? 0}
+              </strong>
               <p>estrelas no melhor projeto</p>
             </article>
             <article>
@@ -297,6 +329,7 @@ function Observatory() {
             <span><i className="legend-measured" /> medido com dados públicos</span>
             <span><i className="legend-minimum" /> mínimo confirmado pelo selo</span>
             <span><i className="legend-private" /> contador não é público</span>
+            <span><i className="legend-unavailable" /> fonte temporariamente indisponível</span>
           </aside>
 
           <section className="achievement-grid">
@@ -308,8 +341,16 @@ function Observatory() {
           <section className="repo-signal">
             <div>
               <p className="eyebrow">sinal mais forte</p>
-              <h2>{audit.metrics.topRepository?.name ?? "Nenhum repositório encontrado"}</h2>
-              <p>{audit.metrics.topRepository?.description || "O projeto público com maior alcance do perfil."}</p>
+              <h2>
+                {audit.sources.repositories === "unavailable"
+                  ? "Projetos temporariamente indisponíveis"
+                  : audit.metrics.topRepository?.name ?? "Nenhum repositório autoral encontrado"}
+              </h2>
+              <p>
+                {audit.sources.repositories === "unavailable"
+                  ? "A auditoria preservou o restante do perfil e tentará essa fonte numa próxima leitura."
+                  : audit.metrics.topRepository?.description || "O projeto público com maior alcance do perfil."}
+              </p>
             </div>
             {audit.metrics.topRepository ? (
               <a href={audit.metrics.topRepository.url} target="_blank" rel="noreferrer">
@@ -324,6 +365,7 @@ function Observatory() {
                 new Date(audit.generatedAt),
               )}
             </time>.
+            {audit.warnings.length ? <span> · auditoria parcial</span> : null}
           </p>
         </div>
       ) : null}
