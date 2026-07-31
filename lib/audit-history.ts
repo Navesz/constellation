@@ -26,6 +26,16 @@ export type AuditHistoryBackup = {
   history: AuditHistory;
 };
 
+export type RecentAuditProfile = {
+  login: string;
+  lastObservedAt: string;
+  observationCount: number;
+  visibleAchievementCount: number | null;
+  mergedPullRequests: number | null;
+  topRepositoryStars: number | null;
+  publicRepositories: number;
+};
+
 export type AuditChanges = {
   visibleAchievements: number | null;
   mergedPullRequests: number | null;
@@ -188,6 +198,29 @@ export function serializeAuditHistory(history: AuditHistory) {
 
 export function countAuditHistorySnapshots(history: AuditHistory) {
   return Object.values(history).reduce((total, snapshots) => total + snapshots.length, 0);
+}
+
+export function listRecentAuditProfiles(history: AuditHistory): RecentAuditProfile[] {
+  return Object.values(history)
+    .flatMap((snapshots) => {
+      const completeSnapshots = snapshots
+        .filter((snapshot) => validSnapshot(snapshot) && snapshot.complete)
+        .sort((left, right) => Date.parse(left.capturedAt) - Date.parse(right.capturedAt));
+      const latest = completeSnapshots.at(-1);
+      if (!latest) return [];
+
+      return [{
+        login: latest.login,
+        lastObservedAt: latest.capturedAt,
+        observationCount: completeSnapshots.length,
+        visibleAchievementCount: latest.visibleAchievementCount,
+        mergedPullRequests: latest.mergedPullRequests,
+        topRepositoryStars: latest.topRepositoryStars,
+        publicRepositories: latest.publicRepositories,
+      }];
+    })
+    .sort((left, right) => Date.parse(right.lastObservedAt) - Date.parse(left.lastObservedAt))
+    .slice(0, MAX_TRACKED_PROFILES);
 }
 
 export function auditHistoryBackupFilename(exportedAt: string) {
