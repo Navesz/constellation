@@ -37,6 +37,12 @@ diagnósticos de cada fonte e a comparação carregada. Campos de privacidade no
 próprio arquivo registram que o histórico local não foi incluído. Essa exportação
 é separada do backup JSON da memória privada do navegador.
 
+A rota `GET /api/audit?login=octocat` expõe o mesmo retrato para integrações.
+Respostas bem-sucedidas carregam `schemaVersion: 1` no corpo e o cabeçalho
+`X-Constellation-Schema-Version: 1`. O navegador valida integralmente esse
+contrato antes de atualizar a interface; respostas incompletas ou de outra
+versão falham de forma legível, sem produzir contagens parciais acidentais.
+
 Como o GitHub permite ocultar todas as conquistas ou somente um selo, a ausência
 de um badge público nunca é tratada como contador zero. Nesses casos, cartões e
 comparações mostram progresso não público, e a próxima missão considera apenas

@@ -4,6 +4,8 @@ export type VisibleAchievement = {
   tier: number;
 };
 
+export const AUDIT_SCHEMA_VERSION = 1;
+
 type AchievementDefinition = {
   name: string;
   slug: string;
@@ -46,6 +48,7 @@ export type AuditSourceDiagnostic = {
 };
 
 export type AuditResponse = {
+  schemaVersion: typeof AUDIT_SCHEMA_VERSION;
   profile: {
     login: string;
     name: string | null;
@@ -71,7 +74,7 @@ export type AuditResponse = {
     mergedPullRequests: AuditSourceAvailability;
     repositories: AuditSourceAvailability;
   };
-  sourceDiagnostics?: {
+  sourceDiagnostics: {
     achievements: AuditSourceDiagnostic | null;
     mergedPullRequests: AuditSourceDiagnostic | null;
     repositories: AuditSourceDiagnostic | null;
