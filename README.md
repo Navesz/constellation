@@ -186,6 +186,10 @@ diferença cuja fonte esteja indisponível. A comparação não cria pontuação
 nem declara um vencedor. O controle “Inverter perfis” troca a referência,
 recalcula o sentido dos deltas e atualiza a URL; as leituras já carregadas mudam
 de posição imediatamente enquanto a aplicação confirma novamente os dados públicos.
+A comparação também pode ser baixada como CSV, com as cinco métricas públicas,
+os deltas e o estado de cada conquista para os dois perfis. Sinais indisponíveis
+permanecem vazios no arquivo em vez de serem convertidos em zero, e textos são
+neutralizados antes de chegar a uma planilha para não serem interpretados como fórmulas.
 
 ## Desenvolvimento
 

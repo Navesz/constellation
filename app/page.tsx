@@ -78,6 +78,8 @@ import {
   buildProfileComparisonPath,
   compareProfiles,
   comparisonAchievementLabel,
+  profileComparisonCsvFilename,
+  serializeProfileComparisonCsv,
 } from "@/lib/profile-comparison";
 
 const DEFAULT_LOGIN = "Navesz";
@@ -726,6 +728,23 @@ function ProfileComparisonPanel({
 }) {
   const comparison = compareProfiles(primary, secondary);
 
+  function downloadComparisonCsv() {
+    const exportedAt = new Date().toISOString();
+    downloadTextFile(
+      serializeProfileComparisonCsv(
+        primary.profile.login,
+        secondary.profile.login,
+        comparison,
+      ),
+      "text/csv;charset=utf-8",
+      profileComparisonCsvFilename(
+        primary.profile.login,
+        secondary.profile.login,
+        exportedAt,
+      ),
+    );
+  }
+
   return (
     <section className="comparison-panel" aria-labelledby="comparison-title">
       <div className="comparison-heading">
@@ -735,6 +754,7 @@ function ProfileComparisonPanel({
           <p>Diferenças públicas lado a lado, sem ranking composto ou nota inventada.</p>
         </div>
         <div className="comparison-heading-actions">
+          <button type="button" onClick={downloadComparisonCsv}>Baixar comparação .csv</button>
           <button
             className="comparison-swap-button"
             type="button"
