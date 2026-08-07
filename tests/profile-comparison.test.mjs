@@ -4,6 +4,8 @@ import {
   buildProfileComparisonPath,
   compareProfiles,
   comparisonAchievementLabel,
+  profileComparisonCsvFilename,
+  serializeProfileComparisonCsv,
 } from "../lib/profile-comparison.ts";
 
 function achievement(slug, unlocked, overrides = {}) {
@@ -166,4 +168,40 @@ test("does not present a historical achievement as future progress", () => {
   const historical = comparison.achievements.find((item) => item.slug === "mars-2020-contributor");
   assert.equal(comparisonAchievementLabel(historical.primary), "Evento histórico encerrado");
   assert.equal(comparisonAchievementLabel(historical.secondary), "Histórica · visível");
+});
+
+test("exports metrics and achievement states as a spreadsheet-safe comparison", () => {
+  const comparison = compareProfiles(
+    audit({
+      achievements: [achievement("quickdraw", true, { name: "=Quickdraw" })],
+    }),
+    audit({
+      metrics: { mergedPullRequests: null, topRepository: null },
+      sources: { repositories: "unavailable" },
+      achievements: [achievement("quickdraw", false, { name: "=Quickdraw", current: null })],
+    }),
+  );
+  const csv = serializeProfileComparisonCsv("OctoCat", "hubot", comparison);
+  const lines = csv.slice(1).trimEnd().split("\r\n");
+
+  assert.equal(
+    lines[0],
+    "section,signal,primary_login,primary_value,secondary_login,secondary_value,secondary_minus_primary",
+  );
+  assert.equal(
+    lines.find((line) => line.startsWith("metric,PRs públicos mesclados")),
+    "metric,PRs públicos mesclados,OctoCat,12,hubot,,",
+  );
+  assert.equal(
+    lines.find((line) => line.startsWith("achievement,")),
+    "achievement,'=Quickdraw,OctoCat,Nível 1,hubot,Progresso não público,",
+  );
+  assert.equal(
+    profileComparisonCsvFilename("OctoCat", "hubot", "2026-08-07T09:00:00.000Z"),
+    "constellation-comparison-octocat-vs-hubot-2026-08-07.csv",
+  );
+  assert.equal(
+    profileComparisonCsvFilename("???", "hubot", "invalid"),
+    "constellation-comparison-perfil-vs-hubot-export.csv",
+  );
 });

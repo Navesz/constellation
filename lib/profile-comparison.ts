@@ -85,6 +85,20 @@ export function buildProfileComparisonPath(
   return `/?${parameters.toString()}`;
 }
 
+function exportNamePart(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || "perfil";
+}
+
+export function profileComparisonCsvFilename(
+  primaryLogin: string,
+  secondaryLogin: string,
+  exportedAt: string,
+) {
+  const parsedDate = new Date(exportedAt);
+  const date = Number.isNaN(parsedDate.getTime()) ? "export" : parsedDate.toISOString().slice(0, 10);
+  return `constellation-comparison-${exportNamePart(primaryLogin)}-vs-${exportNamePart(secondaryLogin)}-${date}.csv`;
+}
+
 function metric(
   id: ComparisonMetricId,
   label: string,
@@ -140,6 +154,52 @@ export function comparisonAchievementLabel(state: ComparisonAchievementState) {
   if (state.nextThreshold) return `${state.current} de ${state.nextThreshold}`;
   if (state.measurementKind === "measured") return `${state.current} medidos; selo não visível`;
   return "Não visível";
+}
+
+function csvCell(value: string | number | null) {
+  if (value === null) return "";
+  if (typeof value === "number") return String(value);
+
+  const safeValue = /^[\t\r\n ]*[=+\-@]/.test(value) ? `'${value}` : value;
+  return /[",\r\n]/.test(safeValue) ? `"${safeValue.replace(/"/g, '""')}"` : safeValue;
+}
+
+export function serializeProfileComparisonCsv(
+  primaryLogin: string,
+  secondaryLogin: string,
+  comparison: ProfileComparison,
+) {
+  const header = [
+    "section",
+    "signal",
+    "primary_login",
+    "primary_value",
+    "secondary_login",
+    "secondary_value",
+    "secondary_minus_primary",
+  ];
+  const metricRows = comparison.metrics.map((metric) => [
+    "metric",
+    metric.label,
+    primaryLogin,
+    metric.primary,
+    secondaryLogin,
+    metric.secondary,
+    metric.difference,
+  ]);
+  const achievementRows = comparison.achievements.map((achievement) => [
+    "achievement",
+    achievement.name,
+    primaryLogin,
+    comparisonAchievementLabel(achievement.primary),
+    secondaryLogin,
+    comparisonAchievementLabel(achievement.secondary),
+    null,
+  ]);
+
+  return `\uFEFF${[header, ...metricRows, ...achievementRows]
+    .map((row) => row.map(csvCell).join(","))
+    .join("\r\n")}\r\n`;
 }
 
 export function compareProfiles(primary: ComparableAudit, secondary: ComparableAudit): ProfileComparison {
