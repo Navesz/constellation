@@ -108,6 +108,9 @@ antes de consultar o GitHub, evitando consumo externo acidental. `Link`,
 Cada resposta da API recebe ainda `X-Constellation-Request-Id`, um UUID v4
 aleatório exposto por CORS. O valor não incorpora login, parâmetros ou dados do
 perfil e pode ser preservado nos logs da integração como referência operacional.
+Quando a API responde com uma falha, a interface mostra essa referência junto
+da mensagem; erros de rede que acontecem antes de existir uma resposta continuam
+explicitamente sem identificador.
 Respostas `429` usam ainda o cabeçalho HTTP `Retry-After`, além do
 campo estruturado `retryAt` no corpo.
 Todas as respostas preservam esses contratos enquanto aplicam proteção uniforme

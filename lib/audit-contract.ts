@@ -4,9 +4,22 @@ import {
   type AuditResponse,
   type AuditSourceDiagnostic,
 } from "./achievements.ts";
+import {
+  PUBLIC_API_REQUEST_ID_HEADER,
+  PUBLIC_API_REQUEST_ID_PATTERN,
+} from "./public-api.ts";
 
 export const INCOMPATIBLE_AUDIT_RESPONSE_MESSAGE =
   "A API do Constellation retornou uma resposta incompatível. Atualize a página e tente novamente.";
+
+export class AuditApiResponseError extends Error {
+  readonly requestId: string | null;
+
+  constructor(message: string, requestId: string | null) {
+    super(message);
+    this.requestId = requestId;
+  }
+}
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -213,17 +226,39 @@ export function parseAuditErrorResponse(value: unknown): AuditErrorResponse | nu
   };
 }
 
+function auditRequestId(response: Response) {
+  const value = response.headers.get(PUBLIC_API_REQUEST_ID_HEADER)?.trim() ?? "";
+  return PUBLIC_API_REQUEST_ID_PATTERN.test(value) ? value : null;
+}
+
+function auditResponseError(response: Response, message: string) {
+  return new AuditApiResponseError(message, auditRequestId(response));
+}
+
+export function auditApiFailureMessage(value: unknown, fallback: string) {
+  const message = value instanceof Error ? value.message : fallback;
+  const requestId = value instanceof AuditApiResponseError ? value.requestId : null;
+  return requestId
+    ? `${message} Referência da requisição: ${requestId}.`
+    : message;
+}
+
 export async function readAuditApiResponse(response: Response, fallbackError: string) {
   let payload: unknown;
   try {
     payload = await response.json();
   } catch {
-    throw new Error(response.ok ? INCOMPATIBLE_AUDIT_RESPONSE_MESSAGE : fallbackError);
+    throw auditResponseError(
+      response,
+      response.ok ? INCOMPATIBLE_AUDIT_RESPONSE_MESSAGE : fallbackError,
+    );
   }
 
   if (!response.ok) {
-    throw new Error(parseAuditErrorResponse(payload)?.error ?? fallbackError);
+    throw auditResponseError(response, parseAuditErrorResponse(payload)?.error ?? fallbackError);
   }
-  if (!isAuditResponse(payload)) throw new Error(INCOMPATIBLE_AUDIT_RESPONSE_MESSAGE);
+  if (!isAuditResponse(payload)) {
+    throw auditResponseError(response, INCOMPATIBLE_AUDIT_RESPONSE_MESSAGE);
+  }
   return payload;
 }

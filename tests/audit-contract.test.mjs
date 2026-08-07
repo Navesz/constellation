@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  AuditApiResponseError,
   INCOMPATIBLE_AUDIT_RESPONSE_MESSAGE,
+  auditApiFailureMessage,
   isAuditResponse,
   parseAuditErrorResponse,
   readAuditApiResponse,
 } from "../lib/audit-contract.ts";
+import { PUBLIC_API_REQUEST_ID_HEADER } from "../lib/public-api.ts";
 
 function audit(overrides = {}) {
   return {
@@ -150,6 +153,52 @@ test("uses a validated API error and falls back for malformed error bodies", asy
   await assert.rejects(
     readAuditApiResponse(Response.json({ detail: "failed" }, { status: 502 }), "fallback"),
     /fallback/,
+  );
+});
+
+test("carries a valid request reference into user-facing API failures", async () => {
+  const requestId = "d9428888-122b-4c26-8f17-342f45e1f6d2";
+
+  await assert.rejects(
+    readAuditApiResponse(
+      Response.json(
+        { error: "Perfil não encontrado." },
+        { status: 404, headers: { [PUBLIC_API_REQUEST_ID_HEADER]: requestId } },
+      ),
+      "fallback",
+    ),
+    (error) => {
+      assert.ok(error instanceof AuditApiResponseError);
+      assert.equal(error.requestId, requestId);
+      assert.equal(
+        auditApiFailureMessage(error, "fallback"),
+        `Perfil não encontrado. Referência da requisição: ${requestId}.`,
+      );
+      return true;
+    },
+  );
+});
+
+test("ignores malformed request references and keeps network failures reference-free", async () => {
+  await assert.rejects(
+    readAuditApiResponse(
+      Response.json(
+        { detail: "failed" },
+        { status: 502, headers: { [PUBLIC_API_REQUEST_ID_HEADER]: "unsafe value" } },
+      ),
+      "fallback",
+    ),
+    (error) => {
+      assert.ok(error instanceof AuditApiResponseError);
+      assert.equal(error.requestId, null);
+      assert.equal(auditApiFailureMessage(error, "fallback"), "fallback");
+      return true;
+    },
+  );
+
+  assert.equal(
+    auditApiFailureMessage(new TypeError("Falha de rede."), "fallback"),
+    "Falha de rede.",
   );
 });
 

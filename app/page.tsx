@@ -56,7 +56,7 @@ import {
   buildAuditShareUrl,
   serializeAuditDataExport,
 } from "@/lib/audit-export";
-import { readAuditApiResponse } from "@/lib/audit-contract";
+import { auditApiFailureMessage, readAuditApiResponse } from "@/lib/audit-contract";
 import {
   auditRefreshTokenForLogin,
   buildAuditRequestUrl,
@@ -960,7 +960,7 @@ function Observatory() {
         setErrorLogin("");
       } catch (caught) {
         if (caught instanceof DOMException && caught.name === "AbortError") return;
-        const message = caught instanceof Error ? caught.message : "Falha inesperada na auditoria.";
+        const message = auditApiFailureMessage(caught, "Falha inesperada na auditoria.");
         const previousAudit = currentAuditRef.current;
         const canPreservePrevious = canPreserveAuditAfterRefresh(
           previousAudit,
@@ -1005,7 +1005,7 @@ function Observatory() {
         setComparisonState({ login: activeComparisonLogin, audit: payload, error: "" });
       } catch (caught) {
         if (caught instanceof DOMException && caught.name === "AbortError") return;
-        const message = caught instanceof Error ? caught.message : "Falha inesperada na comparação.";
+        const message = auditApiFailureMessage(caught, "Falha inesperada na comparação.");
         setComparisonState((current) => {
           const canPreservePrevious = canPreserveAuditAfterRefresh(
             current?.audit ?? null,
