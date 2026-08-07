@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   AUDIT_REFRESH_MAX_SKEW_MS,
   AUDIT_REFRESH_WINDOW_MS,
+  auditRefreshTokenForLogin,
   buildAuditRequestUrl,
   canPreserveAuditAfterRefresh,
   createAuditRefreshToken,
@@ -23,6 +24,15 @@ test("adds a refresh bucket only for an explicit refresh", () => {
   assert.equal(parsed.pathname, "/api/audit");
   assert.equal(parsed.searchParams.get("login"), "hubot");
   assert.equal(parsed.searchParams.get("refresh"), token);
+});
+
+test("scopes a pending refresh token to its intended profile", () => {
+  const request = { login: "OctoCat", token: "refresh-1" };
+
+  assert.equal(auditRefreshTokenForLogin(request, "octocat"), "refresh-1");
+  assert.equal(auditRefreshTokenForLogin(request, "hubot"), null);
+  assert.equal(auditRefreshTokenForLogin(request, null), null);
+  assert.equal(auditRefreshTokenForLogin(null, "octocat"), null);
 });
 
 test("groups manual refreshes into bounded time windows", () => {

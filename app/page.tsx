@@ -55,9 +55,11 @@ import {
 } from "@/lib/audit-export";
 import { readAuditApiResponse } from "@/lib/audit-contract";
 import {
+  auditRefreshTokenForLogin,
   buildAuditRequestUrl,
   canPreserveAuditAfterRefresh,
   createAuditRefreshToken,
+  type AuditRefreshRequest,
 } from "@/lib/audit-request";
 import { auditReportFilename, buildAuditMarkdown } from "@/lib/audit-report";
 import { auditHtmlReportFilename, buildAuditHtml } from "@/lib/audit-html-report";
@@ -69,7 +71,11 @@ import {
 } from "@/lib/audit-sharing";
 import { downloadTextFile } from "@/lib/browser-download";
 import { githubAchievementDetailUrl, normalizeGitHubLogin } from "@/lib/github-profile";
-import { compareProfiles, comparisonAchievementLabel } from "@/lib/profile-comparison";
+import {
+  buildProfileComparisonPath,
+  compareProfiles,
+  comparisonAchievementLabel,
+} from "@/lib/profile-comparison";
 
 const DEFAULT_LOGIN = "Navesz";
 const MAX_HISTORY_BACKUP_BYTES = 512 * 1024;
@@ -101,11 +107,6 @@ type ComparisonRequestState = {
   login: string;
   audit: AuditResponse | null;
   error: string;
-};
-
-type AuditRefreshRequest = {
-  login: string;
-  token: string;
 };
 
 function compactNumber(value: number) {
@@ -624,10 +625,14 @@ function ProfileComparisonPanel({
   primary,
   secondary,
   onRemove,
+  onSwap,
+  swapDisabled,
 }: {
   primary: AuditResponse;
   secondary: AuditResponse;
   onRemove: () => void;
+  onSwap: () => void;
+  swapDisabled: boolean;
 }) {
   const comparison = compareProfiles(primary, secondary);
 
@@ -639,7 +644,17 @@ function ProfileComparisonPanel({
           <h2 id="comparison-title">{primary.profile.login} × {secondary.profile.login}</h2>
           <p>Diferenças públicas lado a lado, sem ranking composto ou nota inventada.</p>
         </div>
-        <button type="button" onClick={onRemove}>Encerrar comparação</button>
+        <div className="comparison-heading-actions">
+          <button
+            className="comparison-swap-button"
+            type="button"
+            onClick={onSwap}
+            disabled={swapDisabled}
+          >
+            {swapDisabled ? "Atualizando…" : "Inverter perfis"}
+          </button>
+          <button type="button" onClick={onRemove}>Encerrar comparação</button>
+        </div>
       </div>
 
       <div className="comparison-identities" aria-label="Perfis comparados">
@@ -769,18 +784,20 @@ function Observatory() {
   const [localProgress, setLocalProgress] = useState<LocalProgressMemory | null>(null);
   const [comparisonState, setComparisonState] = useState<ComparisonRequestState | null>(null);
   const [comparisonFormError, setComparisonFormError] = useState("");
-  const [comparisonRefreshKey, setComparisonRefreshKey] = useState("");
+  const [comparisonRefreshRequest, setComparisonRefreshRequest] = useState<AuditRefreshRequest | null>(null);
   const [comparisonRefreshing, setComparisonRefreshing] = useState(false);
   const [historyBackupStatus, setHistoryBackupStatus] = useState("");
   const [recentProfiles, setRecentProfiles] = useState<RecentAuditProfile[]>([]);
   const [achievementFilter, setAchievementFilter] = useState<AchievementFilter>("all");
   const currentAuditRef = useRef<AuditResponse | null>(null);
+  const comparisonRefreshToken = auditRefreshTokenForLogin(
+    comparisonRefreshRequest,
+    comparisonLogin,
+  );
 
   useEffect(() => {
     const controller = new AbortController();
-    const refreshToken = refreshRequest?.login.toLowerCase() === routeLogin.toLowerCase()
-      ? refreshRequest.token
-      : null;
+    const refreshToken = auditRefreshTokenForLogin(refreshRequest, routeLogin);
 
     async function loadAudit() {
       try {
@@ -878,7 +895,7 @@ function Observatory() {
 
     async function loadComparison() {
       try {
-        const response = await fetch(buildAuditRequestUrl(activeComparisonLogin, comparisonRefreshKey), {
+        const response = await fetch(buildAuditRequestUrl(activeComparisonLogin, comparisonRefreshToken), {
           signal: controller.signal,
         });
         const payload = await readAuditApiResponse(
@@ -895,7 +912,7 @@ function Observatory() {
           const canPreservePrevious = canPreserveAuditAfterRefresh(
             current?.audit ?? null,
             activeComparisonLogin,
-            comparisonRefreshKey,
+            comparisonRefreshToken,
           );
           return {
             login: activeComparisonLogin,
@@ -910,7 +927,7 @@ function Observatory() {
 
     void loadComparison();
     return () => controller.abort();
-  }, [comparisonLogin, comparisonRefreshKey]);
+  }, [comparisonLogin, comparisonRefreshToken]);
 
   const nextMission = useMemo(
     () => audit ? selectNextMission(audit.achievements) : null,
@@ -999,12 +1016,15 @@ function Observatory() {
     if (comparisonLogin?.toLowerCase() === requestedLogin.toLowerCase()) {
       setComparisonState((current) => current ? { ...current, error: "" } : current);
       setComparisonRefreshing(true);
-      setComparisonRefreshKey(createAuditRefreshToken());
+      setComparisonRefreshRequest({
+        login: requestedLogin,
+        token: createAuditRefreshToken(),
+      });
       return;
     }
 
     setComparisonRefreshing(false);
-    setComparisonRefreshKey("");
+    setComparisonRefreshRequest(null);
     const params = new URLSearchParams(searchParams.toString());
     params.set("login", audit?.profile.login ?? routeLogin);
     params.set("compare", requestedLogin);
@@ -1017,8 +1037,43 @@ function Observatory() {
     params.delete("compare");
     setComparisonFormError("");
     setComparisonRefreshing(false);
-    setComparisonRefreshKey("");
+    setComparisonRefreshRequest(null);
     router.push(`/?${params.toString()}`, { scroll: false });
+  }
+
+  function swapComparison() {
+    if (!audit || !comparisonAudit || comparisonLoading) return;
+
+    const nextPrimary = comparisonAudit;
+    const nextSecondary = audit;
+    const refreshToken = createAuditRefreshToken();
+    currentAuditRef.current = nextPrimary;
+    setAudit(nextPrimary);
+    setComparisonState({
+      login: nextSecondary.profile.login,
+      audit: nextSecondary,
+      error: "",
+    });
+    setLocalProgress(null);
+    setHistoryBackupStatus("");
+    setRefreshRequest({ login: nextPrimary.profile.login, token: refreshToken });
+    setRefreshError("");
+    setComparisonFormError("");
+    setComparisonRefreshing(true);
+    setComparisonRefreshRequest({
+      login: nextSecondary.profile.login,
+      token: refreshToken,
+    });
+    setError("");
+    setErrorLogin("");
+    setLoading(true);
+    router.push(
+      buildProfileComparisonPath(
+        nextPrimary.profile.login,
+        nextSecondary.profile.login,
+      ),
+      { scroll: false },
+    );
   }
 
   function buildShareUrl(comparison?: string | null) {
@@ -1514,7 +1569,13 @@ function Observatory() {
           ) : null}
 
           {comparisonAudit ? (
-            <ProfileComparisonPanel primary={audit} secondary={comparisonAudit} onRemove={removeComparison} />
+            <ProfileComparisonPanel
+              primary={audit}
+              secondary={comparisonAudit}
+              onRemove={removeComparison}
+              onSwap={swapComparison}
+              swapDisabled={comparisonLoading}
+            />
           ) : null}
 
           {localProgress ? (

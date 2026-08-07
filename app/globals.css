@@ -677,7 +677,7 @@ footer {
 }
 
 .comparison-control button,
-.comparison-heading > button,
+.comparison-heading-actions button,
 .comparison-error button {
   min-height: 46px;
   border: 0;
@@ -692,7 +692,7 @@ footer {
 }
 
 .comparison-control button:hover:not(:disabled),
-.comparison-heading > button:hover,
+.comparison-heading-actions button:hover:not(:disabled),
 .comparison-error button:hover {
   color: var(--ink);
   background: var(--signal);
@@ -701,6 +701,11 @@ footer {
 .comparison-control button:disabled {
   cursor: wait;
   opacity: 0.7;
+}
+
+.comparison-heading-actions button:disabled {
+  cursor: wait;
+  opacity: 0.64;
 }
 
 .comparison-control form > p {
@@ -767,6 +772,19 @@ footer {
   margin: 0;
   color: var(--muted);
   line-height: 1.55;
+}
+
+.comparison-heading-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.comparison-heading-actions .comparison-swap-button {
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  background: var(--acid);
 }
 
 .comparison-identities {
@@ -2708,8 +2726,9 @@ footer {
     grid-template-columns: 1fr;
   }
 
-  .comparison-heading > button {
+  .comparison-heading-actions {
     justify-self: start;
+    justify-content: flex-start;
   }
 
   .comparison-error {
