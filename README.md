@@ -22,6 +22,9 @@ A navegação por teclado oferece um salto direto sobre o menu tanto no observat
 quanto no guia da API. Depois de uma busca enviada pelo formulário principal, o foco chega ao
 nome do perfil carregado ou ao erro correspondente; carregamentos iniciais e
 atualizações acionadas por outros controles não deslocam o foco inesperadamente.
+Preferências do sistema também são respeitadas: movimento reduzido desativa as
+animações contínuas, enquanto cores forçadas preservam contornos de foco,
+seleções, barras de progresso e diferenças entre fontes disponíveis e indisponíveis.
 
 O catálogo de critérios foi revisto em 31 de julho de 2026. O próprio GitHub
 mantém Achievements em prévia pública e não oferece uma API oficial nem um
