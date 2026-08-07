@@ -62,6 +62,11 @@ import {
 import { auditReportFilename, buildAuditMarkdown } from "@/lib/audit-report";
 import { auditHtmlReportFilename, buildAuditHtml } from "@/lib/audit-html-report";
 import { buildAuditEvidenceSources } from "@/lib/audit-sources";
+import {
+  buildAuditSharePayload,
+  shareAudit,
+  type AuditShareResult,
+} from "@/lib/audit-sharing";
 import { downloadTextFile } from "@/lib/browser-download";
 import { githubAchievementDetailUrl, normalizeGitHubLogin } from "@/lib/github-profile";
 import { compareProfiles, comparisonAchievementLabel } from "@/lib/profile-comparison";
@@ -749,6 +754,7 @@ function Observatory() {
     requestedComparisonLogin?.toLowerCase() === routeLogin.toLowerCase()
       ? null
       : requestedComparisonLogin;
+  const shareRouteKey = `${routeLogin.toLowerCase()}|${comparisonLogin?.toLowerCase() ?? ""}`;
   const [audit, setAudit] = useState<AuditResponse | null>(null);
   const [error, setError] = useState("");
   const [errorLogin, setErrorLogin] = useState("");
@@ -756,7 +762,10 @@ function Observatory() {
   const [loading, setLoading] = useState(true);
   const [refreshRequest, setRefreshRequest] = useState<AuditRefreshRequest | null>(null);
   const [refreshError, setRefreshError] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [shareState, setShareState] = useState<{
+    routeKey: string;
+    status: AuditShareResult | "idle" | "sharing";
+  }>({ routeKey: shareRouteKey, status: "idle" });
   const [localProgress, setLocalProgress] = useState<LocalProgressMemory | null>(null);
   const [comparisonState, setComparisonState] = useState<ComparisonRequestState | null>(null);
   const [comparisonFormError, setComparisonFormError] = useState("");
@@ -931,6 +940,9 @@ function Observatory() {
   const comparisonLoading = Boolean(
     comparisonLogin && (!comparisonIsCurrent || comparisonRefreshing),
   );
+  const activeShareState = shareState.routeKey === shareRouteKey
+    ? shareState.status
+    : "idle";
 
   function requestAuditRefresh() {
     setLoading(true);
@@ -951,7 +963,7 @@ function Observatory() {
     }
 
     setSearchError("");
-    setCopied(false);
+    setShareState({ routeKey: shareRouteKey, status: "idle" });
 
     if (requestedLogin.toLowerCase() === routeLogin.toLowerCase()) {
       requestAuditRefresh();
@@ -1017,16 +1029,20 @@ function Observatory() {
     ));
   }
 
-  async function copyShareLink() {
-    const shareUrl = buildShareUrl(comparisonLogin);
+  async function shareCurrentAudit() {
+    if (!audit || activeShareState === "sharing") return;
 
-    try {
-      await navigator.clipboard.writeText(shareUrl.toString());
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2400);
-    } catch {
-      setCopied(false);
-    }
+    const shareUrl = buildShareUrl(comparisonAudit?.profile.login);
+    const payload = buildAuditSharePayload(
+      audit.profile.login,
+      comparisonAudit?.profile.login,
+      shareUrl.toString(),
+    );
+    setShareState({ routeKey: shareRouteKey, status: "sharing" });
+    setShareState({
+      routeKey: shareRouteKey,
+      status: await shareAudit(payload, navigator),
+    });
   }
 
   function downloadAuditReport() {
@@ -1366,8 +1382,19 @@ function Observatory() {
                 >
                   {primaryRefreshing ? "Atualizando…" : "Atualizar agora"}
                 </button>
-                <button className="share-button" type="button" onClick={copyShareLink}>
-                  {copied ? "Link copiado" : "Copiar link"}
+                <button
+                  className="share-button"
+                  type="button"
+                  onClick={shareCurrentAudit}
+                  disabled={activeShareState === "sharing" || comparisonLoading}
+                >
+                  {activeShareState === "sharing"
+                    ? "Abrindo…"
+                    : activeShareState === "shared"
+                      ? "Compartilhado"
+                      : activeShareState === "copied"
+                        ? "Link copiado"
+                        : "Compartilhar"}
                 </button>
                 <button
                   className="report-button"
@@ -1394,6 +1421,17 @@ function Observatory() {
                   {comparisonLoading ? "Preparando comparação" : "Baixar dados .json"}
                 </button>
               </div>
+              {activeShareState !== "idle" && activeShareState !== "sharing" ? (
+                <p className={`profile-share-status is-${activeShareState}`} role="status" aria-live="polite">
+                  {activeShareState === "shared"
+                    ? "Auditoria entregue ao menu de compartilhamento."
+                    : activeShareState === "copied"
+                      ? "Menu nativo indisponível; o link foi copiado."
+                      : activeShareState === "cancelled"
+                        ? "Compartilhamento cancelado; nada foi enviado."
+                        : "Este navegador não permitiu compartilhar. Copie o endereço da barra."}
+                </p>
+              ) : null}
             </div>
           </section>
 

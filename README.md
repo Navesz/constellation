@@ -31,7 +31,10 @@ o próprio GitHub pode exibir os eventos associados conforme a permissão de que
 abre a página. Esses links também acompanham o relatório Markdown e a comparação.
 
 Cada auditoria tem uma URL compartilhável no formato `/?login=octocat`. O
-painel também separa contagens medidas pela API de mínimos confirmados pelo
+botão de compartilhamento abre o menu nativo do dispositivo quando disponível;
+se esse recurso falhar ou não existir, copia somente a URL canônica. Cancelamentos
+e bloqueios do navegador aparecem de forma explícita, sem afirmar que algo foi
+enviado. O painel também separa contagens medidas pela API de mínimos confirmados pelo
 nível do selo, para não apresentar estimativas como valores exatos.
 
 Uma leitura pode ser atualizada explicitamente em janelas de 15 segundos. Cada
