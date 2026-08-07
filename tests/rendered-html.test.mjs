@@ -45,7 +45,10 @@ test("server-renders the finished Constellation experience", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
   assert.equal(response.headers.get("referrer-policy"), "strict-origin-when-cross-origin");
-  assert.equal(response.headers.get("permissions-policy"), "camera=(), geolocation=(), microphone=()");
+  assert.equal(
+    response.headers.get("permissions-policy"),
+    "accelerometer=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), xr-spatial-tracking=(), web-share=(self)",
+  );
   assert.equal(response.headers.get("x-constellation-request-id"), null);
   assert.equal(
     response.headers.get("content-security-policy"),

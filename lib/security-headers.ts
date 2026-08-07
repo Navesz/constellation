@@ -1,6 +1,24 @@
+export const DISABLED_BROWSER_CAPABILITIES = [
+  "accelerometer",
+  "camera",
+  "display-capture",
+  "geolocation",
+  "gyroscope",
+  "magnetometer",
+  "microphone",
+  "payment",
+  "usb",
+  "xr-spatial-tracking",
+] as const;
+
+export const SECURITY_PERMISSIONS_POLICY = [
+  ...DISABLED_BROWSER_CAPABILITIES.map((capability) => `${capability}=()`),
+  "web-share=(self)",
+].join(", ");
+
 export const SECURITY_RESPONSE_HEADERS = {
   "Content-Security-Policy": "base-uri 'self'; form-action 'self'; object-src 'none'",
-  "Permissions-Policy": "camera=(), geolocation=(), microphone=()",
+  "Permissions-Policy": SECURITY_PERMISSIONS_POLICY,
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "X-Content-Type-Options": "nosniff",
   "X-Permitted-Cross-Domain-Policies": "none",
