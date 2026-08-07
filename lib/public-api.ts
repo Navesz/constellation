@@ -1,4 +1,5 @@
 export const PUBLIC_API_EXPOSED_HEADERS = [
+  "ETag",
   "Link",
   "Retry-After",
   "X-Constellation-Export-Version",
@@ -9,7 +10,7 @@ export function publicApiHeaders(init?: HeadersInit) {
   const headers = new Headers(init);
   headers.set("Access-Control-Allow-Origin", "*");
   headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
-  headers.set("Access-Control-Allow-Headers", "Accept, Content-Type");
+  headers.set("Access-Control-Allow-Headers", "Accept, Content-Type, If-None-Match");
   headers.set("Access-Control-Expose-Headers", PUBLIC_API_EXPOSED_HEADERS);
   return headers;
 }

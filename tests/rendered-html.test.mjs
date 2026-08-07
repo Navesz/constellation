@@ -87,6 +87,8 @@ test("serves the machine-readable audit schema with long-lived caching", async (
   assert.match(response.headers.get("content-type") ?? "", /^application\/schema\+json\b/i);
   assert.equal(response.headers.get("x-constellation-schema-version"), "2");
   assert.equal(response.headers.get("access-control-allow-origin"), "*");
+  assert.match(response.headers.get("etag") ?? "", /^W\/"sha256-[0-9a-f]{64}"$/);
+  assert.match(response.headers.get("access-control-expose-headers") ?? "", /ETag/);
   assert.equal(response.headers.get("link"), publicApiLinkHeader);
   assert.equal(
     response.headers.get("cache-control"),
@@ -95,6 +97,19 @@ test("serves the machine-readable audit schema with long-lived caching", async (
   const schema = await response.json();
   assert.equal(schema.properties.schemaVersion.const, 2);
   assert.equal(schema.additionalProperties, false);
+
+  const unchanged = await worker.fetch(
+    new Request("http://localhost/api/audit/schema/2", {
+      headers: { "If-None-Match": response.headers.get("etag") ?? "" },
+    }),
+    environment,
+    executionContext,
+  );
+  assert.equal(unchanged.status, 304);
+  assert.equal(unchanged.headers.get("etag"), response.headers.get("etag"));
+  assert.equal(unchanged.headers.get("link"), publicApiLinkHeader);
+  assert.equal(unchanged.headers.get("x-constellation-schema-version"), "2");
+  assert.equal(await unchanged.text(), "");
 });
 
 test("serves current and legacy export schemas with explicit versions", async () => {
@@ -115,6 +130,7 @@ test("serves current and legacy export schemas with explicit versions", async ()
     assert.match(response.headers.get("content-type") ?? "", /^application\/schema\+json\b/i);
     assert.equal(response.headers.get("x-constellation-export-version"), version);
     assert.equal(response.headers.get("access-control-allow-origin"), "*");
+    assert.match(response.headers.get("etag") ?? "", /^W\/"sha256-[0-9a-f]{64}"$/);
     assert.equal(
       response.headers.get("cache-control"),
       "public, s-maxage=86400, stale-while-revalidate=604800",
@@ -123,6 +139,18 @@ test("serves current and legacy export schemas with explicit versions", async ()
     assert.equal(schema.properties.version.const, Number(version));
     assert.equal(schema.required.includes("$schema"), selfDescribing);
     assert.equal(schema.additionalProperties, false);
+
+    const unchanged = await worker.fetch(
+      new Request(`http://localhost${path}`, {
+        headers: { "If-None-Match": response.headers.get("etag") ?? "" },
+      }),
+      environment,
+      executionContext,
+    );
+    assert.equal(unchanged.status, 304);
+    assert.equal(unchanged.headers.get("etag"), response.headers.get("etag"));
+    assert.equal(unchanged.headers.get("x-constellation-export-version"), version);
+    assert.equal(await unchanged.text(), "");
   }
 });
 
@@ -138,10 +166,23 @@ test("serves the OpenAPI entry document with long-lived caching", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^application\/openapi\+json\b/i);
   assert.equal(response.headers.get("access-control-allow-origin"), "*");
   assert.equal(response.headers.get("link"), publicApiLinkHeader);
+  assert.match(response.headers.get("etag") ?? "", /^W\/"sha256-[0-9a-f]{64}"$/);
   assert.equal(
     response.headers.get("cache-control"),
     "public, s-maxage=86400, stale-while-revalidate=604800",
   );
+
+  const unchanged = await worker.fetch(
+    new Request("http://localhost/api/openapi.json", {
+      headers: { "If-None-Match": `W/"old", ${response.headers.get("etag")}` },
+    }),
+    environment,
+    executionContext,
+  );
+  assert.equal(unchanged.status, 304);
+  assert.equal(unchanged.headers.get("etag"), response.headers.get("etag"));
+  assert.equal(unchanged.headers.get("link"), publicApiLinkHeader);
+  assert.equal(await unchanged.text(), "");
   const description = await response.json();
   assert.equal(description.openapi, "3.1.1");
   assert.equal(description.paths["/api/audit"].get.operationId, "getProfileAudit");
@@ -214,6 +255,7 @@ test("server-renders a human integration guide next to the machine contracts", a
   assert.match(html, /reconstruir Markdown, HTML e JSON normalizado localmente/);
   assert.match(html, /somente a origem oficial se torna um link direto/);
   assert.match(html, /\/api\/openapi\.json/);
+  assert.match(html, /If-None-Match/);
   assert.match(html, /\/api\/status/);
   assert.match(html, /Saúde sem gastar uma consulta externa\./);
   assert.match(html, /Retry-After/);
@@ -250,7 +292,7 @@ test("answers CORS preflight consistently for the public API routes", async () =
     assert.equal(response.status, 204);
     assert.equal(response.headers.get("access-control-allow-origin"), "*");
     assert.equal(response.headers.get("access-control-allow-methods"), "GET, OPTIONS");
-    assert.equal(response.headers.get("access-control-allow-headers"), "Accept, Content-Type");
+    assert.equal(response.headers.get("access-control-allow-headers"), "Accept, Content-Type, If-None-Match");
     assert.equal(response.headers.get("access-control-max-age"), "86400");
     assert.equal(response.headers.get("allow"), "GET, OPTIONS");
     assert.equal(response.headers.get("x-content-type-options"), "nosniff");
@@ -345,7 +387,7 @@ test("returns an honest partial audit when secondary GitHub sources fail", async
   assert.equal(response.headers.get("access-control-allow-origin"), "*");
   assert.equal(
     response.headers.get("access-control-expose-headers"),
-    "Link, Retry-After, X-Constellation-Export-Version, X-Constellation-Schema-Version",
+    "ETag, Link, Retry-After, X-Constellation-Export-Version, X-Constellation-Schema-Version",
   );
   assert.equal(
     response.headers.get("link"),
