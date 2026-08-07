@@ -154,8 +154,10 @@ mostra todas as observações distintas, seus cinco sinais — seguidores, selos
 PRs, estrelas e repositórios — e a mudança desde o estado anterior.
 
 Quando existem pelo menos dois perfis nessa memória, o painel mostra órbitas
-recentes ordenadas pela última observação, com um resumo dos quatro sinais e
-acesso direto para remapear cada login.
+recentes ordenadas pela última observação, com um resumo dos cinco sinais e
+acesso direto para remapear cada login. Esses atalhos são carregados antes da
+consulta atual e continuam disponíveis quando o GitHub ou a API falha; a tela de
+erro também permite tentar novamente sem apagar nem regravar a memória privada.
 
 Essa memória também pode ser baixada explicitamente como um backup JSON e
 restaurada em outro navegador. A importação valida o formato, mescla estados

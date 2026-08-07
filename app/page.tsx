@@ -33,7 +33,10 @@ import {
   parseAuditHistoryRecordingPreference,
   serializeAuditHistoryRecordingPreference,
 } from "@/lib/audit-history-preference";
-import { clearStoredAuditHistory } from "@/lib/audit-history-storage";
+import {
+  clearStoredAuditHistory,
+  readStoredRecentAuditProfiles,
+} from "@/lib/audit-history-storage";
 import {
   ACHIEVEMENT_CATALOG_REVIEWED_AT,
   GITHUB_ACHIEVEMENTS_REFERENCE_URL,
@@ -891,6 +894,12 @@ function Observatory() {
 
     async function loadAudit() {
       try {
+        setRecentProfiles(readStoredRecentAuditProfiles(window.localStorage));
+      } catch {
+        setRecentProfiles([]);
+      }
+
+      try {
         const response = await fetch(buildAuditRequestUrl(routeLogin, refreshToken), {
           signal: controller.signal,
         });
@@ -932,7 +941,6 @@ function Observatory() {
             cleared: false,
           });
         } catch {
-          setRecentProfiles([]);
           setLocalProgress({
             current: currentSnapshot,
             previous: null,
@@ -1078,6 +1086,11 @@ function Observatory() {
     setError("");
     setErrorLogin("");
     setRefreshRequest({ login: routeLogin, token: createAuditRefreshToken() });
+  }
+
+  function retryFailedAudit() {
+    pendingAuditFocusLoginRef.current = routeLogin;
+    requestAuditRefresh();
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -1508,6 +1521,8 @@ function Observatory() {
         </form>
       </section>
 
+      <RecentOrbits profiles={recentProfiles} currentLogin={routeLogin} />
+
       {errorIsCurrent ? (
         <section
           className="error-panel audit-focus-target"
@@ -1520,6 +1535,9 @@ function Observatory() {
           <div>
             <strong id="audit-error-title">Rota interrompida</strong>
             <p>{error}</p>
+            <button className="error-retry" type="button" onClick={retryFailedAudit}>
+              Tentar novamente
+            </button>
           </div>
         </section>
       ) : null}
@@ -1635,8 +1653,6 @@ function Observatory() {
               ) : null}
             </div>
           </section>
-
-          <RecentOrbits profiles={recentProfiles} currentLogin={audit.profile.login} />
 
           <section className="comparison-control" aria-labelledby="comparison-control-title">
             <div>

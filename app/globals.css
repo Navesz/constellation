@@ -109,6 +109,7 @@ main {
 .dashboard,
 .error-panel,
 .loading-grid,
+.recent-orbits,
 footer {
   width: min(1180px, calc(100% - 40px));
   margin-inline: auto;
@@ -381,6 +382,7 @@ footer {
 
 .recent-orbits {
   margin-top: 24px;
+  margin-bottom: 24px;
   border: 1px solid var(--line);
   padding: clamp(22px, 3vw, 34px);
   background: rgba(255, 250, 240, 0.72);
@@ -2120,6 +2122,27 @@ footer {
   color: var(--ink-soft);
 }
 
+.error-retry {
+  min-height: 36px;
+  margin-top: 14px;
+  border: 1px solid var(--signal-dark);
+  padding: 7px 12px;
+  color: var(--ink);
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.error-retry:hover,
+.error-retry:focus-visible {
+  color: var(--paper-bright);
+  background: var(--ink);
+}
+
 .loading-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -2730,6 +2753,7 @@ footer {
   .dashboard,
   .error-panel,
   .loading-grid,
+  .recent-orbits,
   footer {
     width: min(100% - 24px, 1180px);
   }

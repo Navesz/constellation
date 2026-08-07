@@ -1,15 +1,18 @@
 import {
   AUDIT_HISTORY_STORAGE_KEY,
+  listRecentAuditProfiles,
   parseAuditHistory,
   removeProfileHistory,
   serializeAuditHistory,
   type AuditHistory,
+  type RecentAuditProfile,
 } from "./audit-history.ts";
 import {
   AUDIT_HISTORY_RECORDING_STORAGE_KEY,
   serializeAuditHistoryRecordingPreference,
 } from "./audit-history-preference.ts";
 
+type AuditHistoryReadableStorage = Pick<Storage, "getItem">;
 type AuditHistoryStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
 export type AuditHistoryClearTarget =
@@ -20,6 +23,14 @@ export type AuditHistoryClearResult = {
   history: AuditHistory;
   recordingPaused: boolean;
 };
+
+export function readStoredRecentAuditProfiles(
+  storage: AuditHistoryReadableStorage,
+): RecentAuditProfile[] {
+  return listRecentAuditProfiles(
+    parseAuditHistory(storage.getItem(AUDIT_HISTORY_STORAGE_KEY)),
+  );
+}
 
 export function clearStoredAuditHistory(
   storage: AuditHistoryStorage,
