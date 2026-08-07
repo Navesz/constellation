@@ -2650,6 +2650,66 @@ footer {
   }
 }
 
+@media (forced-colors: active) {
+  .ambient {
+    display: none;
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  a:focus-visible,
+  #main-content:focus,
+  .audit-focus-target:focus {
+    outline-color: Highlight;
+  }
+
+  .recent-orbits a.is-current,
+  .achievement-controls button[aria-pressed="true"],
+  .comparison-achievements article > div > span.is-visible {
+    outline: 2px solid Highlight;
+    outline-offset: -3px;
+  }
+
+  .recent-orbits a.is-current {
+    box-shadow: none;
+  }
+
+  .progress {
+    height: 8px;
+    border: 1px solid CanvasText;
+    background: Canvas;
+  }
+
+  .progress span {
+    background: Highlight;
+  }
+
+  .progress.is-indeterminate {
+    border-style: dashed;
+    background: Canvas;
+  }
+
+  .evidence-status i,
+  .comparison-loading > span {
+    border: 2px solid currentColor;
+    background: Canvas;
+  }
+
+  .evidence-ledger > ol > li.is-unavailable .evidence-status i {
+    border-style: dashed;
+  }
+
+  .loading-grid {
+    border: 1px solid CanvasText;
+    background: Canvas;
+  }
+
+  .loading-grid div {
+    border-inline-end: 1px solid CanvasText;
+    background: Canvas;
+  }
+}
+
 @media (max-width: 860px) {
   .hero,
   .docs-hero,
