@@ -62,6 +62,7 @@ import {
 import { auditReportFilename, buildAuditMarkdown } from "@/lib/audit-report";
 import { auditHtmlReportFilename, buildAuditHtml } from "@/lib/audit-html-report";
 import { buildAuditEvidenceSources } from "@/lib/audit-sources";
+import { downloadTextFile } from "@/lib/browser-download";
 import { githubAchievementDetailUrl, normalizeGitHubLogin } from "@/lib/github-profile";
 import { compareProfiles, comparisonAchievementLabel } from "@/lib/profile-comparison";
 
@@ -135,17 +136,6 @@ function timelineChangeSummary(changes: AuditChanges | null) {
   }
 
   return signals.length ? signals.join(" · ") : "sem mudança numérica";
-}
-
-function downloadTextFile(contents: string, mimeType: string, filename: string) {
-  const blobUrl = URL.createObjectURL(new Blob([contents], { type: mimeType }));
-  const link = document.createElement("a");
-  link.href = blobUrl;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
 }
 
 function RecentOrbits({
