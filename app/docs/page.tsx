@@ -198,6 +198,8 @@ export default function ApiDocsPage() {
             <li><strong>Parcial é parcial:</strong> consulte <code>sources</code> antes de calcular ou comparar métricas.</li>
             <li><strong>Cache consciente:</strong> a resposta pode ser compartilhada por alguns minutos; atualizações manuais usam uma chave curta e limitada.</li>
             <li><strong>Monitoramento isolado:</strong> use a rota de status para disponibilidade da aplicação e a auditoria somente quando precisar consultar um perfil.</li>
+            <li><strong>Origem canônica:</strong> metadata social usa a origem oficial ou um endereço local explícito; hosts encaminhados desconhecidos não são refletidos.</li>
+            <li><strong>Navegação defensiva:</strong> todas as respostas limitam referrer, MIME sniffing, objetos incorporados e permissões de câmera, localização e microfone.</li>
             <li><strong>Sem spam:</strong> o catálogo orienta ações legítimas e não automatiza atividade para fabricar conquistas.</li>
           </ul>
         </section>

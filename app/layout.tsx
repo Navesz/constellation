@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from "next/headers";
+import { resolveSiteOrigin } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -19,24 +20,24 @@ const description =
 
 export async function generateMetadata(): Promise<Metadata> {
   const incomingHeaders = await headers();
-  const host = incomingHeaders.get("x-forwarded-host") ?? incomingHeaders.get("host") ?? "localhost:3000";
-  const protocol = incomingHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  const socialImage = `${protocol}://${host}/og.png`;
+  const siteOrigin = resolveSiteOrigin(incomingHeaders);
 
   return {
+    metadataBase: new URL(siteOrigin),
     title,
     description,
     openGraph: {
       title,
       description,
       type: "website",
-      images: [{ url: socialImage, width: 1732, height: 909, alt: "Constellation profile observatory" }],
+      url: siteOrigin,
+      images: [{ url: "/og.png", width: 1732, height: 909, alt: "Constellation profile observatory" }],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [socialImage],
+      images: ["/og.png"],
     },
   };
 }

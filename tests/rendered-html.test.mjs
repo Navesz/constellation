@@ -34,6 +34,13 @@ test("server-renders the finished Constellation experience", async () => {
 
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
+  assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(response.headers.get("referrer-policy"), "strict-origin-when-cross-origin");
+  assert.equal(response.headers.get("permissions-policy"), "camera=(), geolocation=(), microphone=()");
+  assert.equal(
+    response.headers.get("content-security-policy"),
+    "base-uri 'self'; form-action 'self'; object-src 'none'",
+  );
 
   const html = await response.text();
   assert.match(html, /<title>Constellation — GitHub Profile Observatory<\/title>/i);
@@ -43,6 +50,29 @@ test("server-renders the finished Constellation experience", async () => {
   assert.match(html, /href="\/docs"[^>]*>Guia da API/);
   assert.match(html, /\/og\.png/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
+});
+
+test("does not reflect an untrusted forwarded host into social metadata", async () => {
+  const worker = await loadWorker();
+  const response = await worker.fetch(
+    new Request("http://localhost/", {
+      headers: {
+        accept: "text/html",
+        "x-forwarded-host": "metadata-attacker.example",
+        "x-forwarded-proto": "https",
+      },
+    }),
+    environment,
+    executionContext,
+  );
+
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.doesNotMatch(html, /metadata-attacker\.example/);
+  assert.match(
+    html,
+    /https:\/\/constellation-profile\.leonardonavesworking\.chatgpt\.site\/og\.png/,
+  );
 });
 
 test("serves the machine-readable audit schema with long-lived caching", async () => {
@@ -186,6 +216,8 @@ test("server-renders a human integration guide next to the machine contracts", a
   assert.match(html, /\/api\/status/);
   assert.match(html, /Saúde sem gastar uma consulta externa\./);
   assert.match(html, /Retry-After/);
+  assert.match(html, /Origem canônica/);
+  assert.match(html, /Navegação defensiva/);
   assert.match(html, /Sem spam/);
 });
 
@@ -220,6 +252,7 @@ test("answers CORS preflight consistently for the public API routes", async () =
     assert.equal(response.headers.get("access-control-allow-headers"), "Accept, Content-Type");
     assert.equal(response.headers.get("access-control-max-age"), "86400");
     assert.equal(response.headers.get("allow"), "GET, OPTIONS");
+    assert.equal(response.headers.get("x-content-type-options"), "nosniff");
     assert.equal(await response.text(), "");
   }
 });
