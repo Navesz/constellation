@@ -11,6 +11,14 @@ real de quem acompanha um perfil do GitHub.
 4. Abra um pull request explicando o impacto para o produto e a verificação.
 5. Mescle somente depois que o CI estiver aprovado.
 
+## Segurança do CI
+
+Actions externas ficam fixadas pelo SHA completo de um release oficial, com a
+versão legível ao lado. Ao atualizá-las, confirme que o commit pertence ao
+repositório original, ajuste o comentário de versão e deixe o próprio workflow
+validar a mudança em um pull request. O token do CI permanece com acesso somente
+de leitura ao conteúdo do repositório.
+
 ## Coautoria legítima (Pair Extraordinaire)
 
 A conquista **Pair Extraordinaire** conta commits com coautoria em pull requests **mesclados**
