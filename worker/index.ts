@@ -1,6 +1,7 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import { withPublicApiRequestId } from "../lib/public-api";
 import { withSecurityHeaders } from "../lib/security-headers";
 
 interface Env {
@@ -42,7 +43,11 @@ const worker = {
       return withSecurityHeaders(response);
     }
 
-    return withSecurityHeaders(await handler.fetch(request, env, ctx));
+    const response = await handler.fetch(request, env, ctx);
+    const tracedResponse = url.pathname === "/api" || url.pathname.startsWith("/api/")
+      ? withPublicApiRequestId(response)
+      : response;
+    return withSecurityHeaders(tracedResponse);
   },
 };
 

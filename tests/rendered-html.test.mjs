@@ -18,6 +18,15 @@ const executionContext = {
   passThroughOnException() {},
 };
 
+const requestIdPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function publicRequestId(response) {
+  const requestId = response.headers.get("x-constellation-request-id") ?? "";
+  assert.match(requestId, requestIdPattern);
+  return requestId;
+}
+
 const publicApiLinkHeader =
   '</api/audit/schema/2>; rel="describedby"; type="application/schema+json", '
   + '</api/openapi.json>; rel="service-desc"; type="application/openapi+json", '
@@ -37,6 +46,7 @@ test("server-renders the finished Constellation experience", async () => {
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
   assert.equal(response.headers.get("referrer-policy"), "strict-origin-when-cross-origin");
   assert.equal(response.headers.get("permissions-policy"), "camera=(), geolocation=(), microphone=()");
+  assert.equal(response.headers.get("x-constellation-request-id"), null);
   assert.equal(
     response.headers.get("content-security-policy"),
     "base-uri 'self'; form-action 'self'; object-src 'none'",
@@ -92,6 +102,7 @@ test("serves the machine-readable audit schema with long-lived caching", async (
   assert.match(response.headers.get("etag") ?? "", /^W\/"sha256-[0-9a-f]{64}"$/);
   assert.match(response.headers.get("access-control-expose-headers") ?? "", /ETag/);
   assert.equal(response.headers.get("link"), publicApiLinkHeader);
+  const requestId = publicRequestId(response);
   assert.equal(
     response.headers.get("cache-control"),
     "public, s-maxage=86400, stale-while-revalidate=604800",
@@ -111,6 +122,7 @@ test("serves the machine-readable audit schema with long-lived caching", async (
   assert.equal(unchanged.headers.get("etag"), response.headers.get("etag"));
   assert.equal(unchanged.headers.get("link"), publicApiLinkHeader);
   assert.equal(unchanged.headers.get("x-constellation-schema-version"), "2");
+  assert.notEqual(publicRequestId(unchanged), requestId);
   assert.equal(await unchanged.text(), "");
 });
 
@@ -168,6 +180,7 @@ test("serves the OpenAPI entry document with long-lived caching", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^application\/openapi\+json\b/i);
   assert.equal(response.headers.get("access-control-allow-origin"), "*");
   assert.equal(response.headers.get("link"), publicApiLinkHeader);
+  publicRequestId(response);
   assert.match(response.headers.get("etag") ?? "", /^W\/"sha256-[0-9a-f]{64}"$/);
   assert.equal(
     response.headers.get("cache-control"),
@@ -217,6 +230,7 @@ test("reports application health without contacting GitHub or caching the observ
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.equal(response.headers.get("access-control-allow-origin"), "*");
   assert.equal(response.headers.get("link"), publicApiLinkHeader);
+  publicRequestId(response);
 
   const status = await response.json();
   assert.equal(status.status, "ok");
@@ -260,6 +274,7 @@ test("server-renders a human integration guide next to the machine contracts", a
   assert.match(html, /somente a origem oficial se torna um link direto/);
   assert.match(html, /\/api\/openapi\.json/);
   assert.match(html, /If-None-Match/);
+  assert.match(html, /X-Constellation-Request-Id/);
   assert.match(html, /\/api\/status/);
   assert.match(html, /Saúde sem gastar uma consulta externa\./);
   assert.match(html, /Retry-After/);
@@ -299,6 +314,11 @@ test("answers CORS preflight consistently for the public API routes", async () =
     assert.equal(response.headers.get("access-control-allow-headers"), "Accept, Content-Type, If-None-Match");
     assert.equal(response.headers.get("access-control-max-age"), "86400");
     assert.equal(response.headers.get("allow"), "GET, OPTIONS");
+    assert.match(
+      response.headers.get("access-control-expose-headers") ?? "",
+      /X-Constellation-Request-Id/,
+    );
+    publicRequestId(response);
     assert.equal(response.headers.get("x-content-type-options"), "nosniff");
     assert.equal(await response.text(), "");
   }
@@ -315,6 +335,7 @@ test("rejects an invalid GitHub login before making an external request", async 
   assert.equal(response.status, 400);
   assert.equal(response.headers.get("access-control-allow-origin"), "*");
   assert.equal(response.headers.get("link"), publicApiLinkHeader);
+  publicRequestId(response);
   assert.deepEqual(await response.json(), {
     error: "Informe um usuário válido do GitHub.",
   });
@@ -391,12 +412,13 @@ test("returns an honest partial audit when secondary GitHub sources fail", async
   assert.equal(response.headers.get("access-control-allow-origin"), "*");
   assert.equal(
     response.headers.get("access-control-expose-headers"),
-    "ETag, Link, Retry-After, X-Constellation-Export-Version, X-Constellation-Schema-Version",
+    "ETag, Link, Retry-After, X-Constellation-Export-Version, X-Constellation-Request-Id, X-Constellation-Schema-Version",
   );
   assert.equal(
     response.headers.get("link"),
     publicApiLinkHeader,
   );
+  publicRequestId(response);
   const audit = await response.json();
   assert.equal(audit.schemaVersion, 2);
   assert.deepEqual(audit.sources, {
