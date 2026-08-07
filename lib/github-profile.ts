@@ -22,19 +22,86 @@ export function githubAchievementDetailUrl(login: string, slug: string) {
   return url.toString();
 }
 
-export function parseVisibleAchievements(html: string): ParsedAchievement[] {
-  const bySlug = new Map<string, ParsedAchievement>();
-  const achievementLink =
-    /<a\b[^>]*href=["'][^"']*[?&]achievement=([a-z0-9-]+)(?:&amp;|&)tab=achievements[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi;
+function htmlAttribute(attributes: string, name: "href" | "alt") {
+  const match = attributes.match(
+    new RegExp(`(?:^|\\s)${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, "i"),
+  );
+  return match?.[1] ?? match?.[2] ?? null;
+}
 
-  for (const match of html.matchAll(achievementLink)) {
-    const slug = match[1].toLowerCase();
+function decodeHtmlEntities(value: string) {
+  const named: Record<string, string> = {
+    amp: "&",
+    apos: "'",
+    gt: ">",
+    lt: "<",
+    quot: '"',
+  };
+
+  return value.replace(/&(#(?:x[0-9a-f]+|\d+)|amp|apos|gt|lt|quot);/gi, (entity, code: string) => {
+    if (!code.startsWith("#")) return named[code.toLowerCase()] ?? entity;
+
+    const hexadecimal = code[1]?.toLowerCase() === "x";
+    const codePoint = Number.parseInt(code.slice(hexadecimal ? 2 : 1), hexadecimal ? 16 : 10);
+    if (!Number.isSafeInteger(codePoint) || codePoint <= 0 || codePoint > 0x10ffff) return entity;
+
+    try {
+      return String.fromCodePoint(codePoint);
+    } catch {
+      return entity;
+    }
+  });
+}
+
+function achievementSlugFromHref(href: string, expectedLogin: string | null) {
+  try {
+    const url = new URL(decodeHtmlEntities(href), "https://github.com");
+    if (url.origin !== "https://github.com" || url.hash) return null;
+
+    const pathSegments = url.pathname.split("/").filter(Boolean);
+    if (pathSegments.length !== 1) return null;
+    const linkedLogin = normalizeGitHubLogin(decodeURIComponent(pathSegments[0]));
+    if (!linkedLogin || (expectedLogin && linkedLogin.toLowerCase() !== expectedLogin.toLowerCase())) {
+      return null;
+    }
+
+    const achievements = url.searchParams.getAll("achievement");
+    const tabs = url.searchParams.getAll("tab");
+    if (achievements.length !== 1 || tabs.length !== 1 || tabs[0] !== "achievements") return null;
+
+    const slug = achievements[0].trim().toLowerCase();
+    return /^[a-z0-9-]+$/.test(slug) ? slug : null;
+  } catch {
+    return null;
+  }
+}
+
+function achievementName(content: string) {
+  for (const image of content.matchAll(/<img\b([^>]*)>/gi)) {
+    const alt = htmlAttribute(image[1], "alt");
+    if (!alt) continue;
+    const decoded = decodeHtmlEntities(alt).match(/^Achievement:\s*(.+)$/i)?.[1]?.trim();
+    if (decoded) return decoded;
+  }
+  return null;
+}
+
+export function parseVisibleAchievements(html: string, profileLogin?: string): ParsedAchievement[] {
+  const expectedLogin = profileLogin === undefined ? null : normalizeGitHubLogin(profileLogin);
+  if (profileLogin !== undefined && !expectedLogin) return [];
+
+  const bySlug = new Map<string, ParsedAchievement>();
+  const achievementLinks = /<a\b([^>]*)>([\s\S]*?)<\/a>/gi;
+
+  for (const match of html.matchAll(achievementLinks)) {
+    const href = htmlAttribute(match[1], "href");
     const content = match[2];
-    const name = content.match(/alt=["']Achievement:\s*([^"']+)["']/i)?.[1]?.trim();
-    if (!name) continue;
+    const slug = href ? achievementSlugFromHref(href, expectedLogin) : null;
+    const name = achievementName(content);
+    if (!slug || !name) continue;
 
     const parsedTier = Number(content.match(/>\s*x(\d+)\s*</i)?.[1] ?? 1);
-    const tier = Number.isFinite(parsedTier) && parsedTier > 0 ? parsedTier : 1;
+    const tier = Number.isSafeInteger(parsedTier) && parsedTier > 0 ? parsedTier : 1;
     const current = bySlug.get(slug);
 
     if (!current || tier > current.tier) {

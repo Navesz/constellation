@@ -43,10 +43,51 @@ test("parses achievement tiers and keeps the highest duplicate tier", () => {
       <img alt="Achievement: Quickdraw">
     </a>`;
 
-  assert.deepEqual(parseVisibleAchievements(html), [
+  assert.deepEqual(parseVisibleAchievements(html, "octocat"), [
     { name: "Pull Shark", slug: "pull-shark", tier: 2 },
     { name: "Quickdraw", slug: "quickdraw", tier: 1 },
   ]);
+});
+
+test("parses reordered and encoded GitHub achievement links", () => {
+  const html = `
+    <a class="achievement" href='https://github.com/OctoCat?tab=achievements&amp;from=profile&amp;achievement=PAIR-EXTRAORDINAIRE'>
+      <span><img class="badge" alt='Achievement: Pair &amp; Extraordinaire'></span>
+      <strong>x3</strong>
+    </a>
+    <a href="/octocat?tab=achievements&#38;achievement=quickdraw">
+      <img alt="Achievement: Quickdraw">
+    </a>`;
+
+  assert.deepEqual(parseVisibleAchievements(html, "octocat"), [
+    { name: "Pair & Extraordinaire", slug: "pair-extraordinaire", tier: 3 },
+    { name: "Quickdraw", slug: "quickdraw", tier: 1 },
+  ]);
+});
+
+test("ignores achievement-shaped links outside the audited GitHub profile", () => {
+  const html = `
+    <a href="https://example.test/octocat?achievement=quickdraw&amp;tab=achievements">
+      <img alt="Achievement: Quickdraw">
+    </a>
+    <a href="/hubot?achievement=pull-shark&amp;tab=achievements">
+      <img alt="Achievement: Pull Shark">
+    </a>
+    <a href="/octocat?achievement=yolo&amp;achievement=quickdraw&amp;tab=achievements">
+      <img alt="Achievement: YOLO">
+    </a>
+    <a href="/octocat?achievement=galaxy-brain&amp;tab=repositories">
+      <img alt="Achievement: Galaxy Brain">
+    </a>
+    <a href="/octocat?achievement=starstruck&amp;tab=achievements#redirect">
+      <img alt="Achievement: Starstruck">
+    </a>
+    <a href="/octocat?achievement=quickdraw&amp;tab=achievements">
+      <span alt="Achievement: Quickdraw"></span>
+    </a>`;
+
+  assert.deepEqual(parseVisibleAchievements(html, "octocat"), []);
+  assert.deepEqual(parseVisibleAchievements(html, "-invalid"), []);
 });
 
 test("labels badge-derived counts as confirmed minimums", () => {

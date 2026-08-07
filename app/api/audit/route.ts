@@ -158,7 +158,9 @@ export async function GET(request: Request) {
       ));
     }
 
-    const visibleAchievements = profilePage === null ? [] : parseVisibleAchievements(profilePage);
+    const visibleAchievements = profilePage === null
+      ? []
+      : parseVisibleAchievements(profilePage, profile.login);
     const topRepository = repositorySearch?.items[0] ?? null;
 
     const achievements = buildAchievementProgress(
