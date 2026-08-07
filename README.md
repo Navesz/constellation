@@ -18,6 +18,11 @@ O mapa pode ser filtrado por conquistas visíveis, sinais com próximo marco
 mensurável ou estados sem contador público. Os filtros se sobrepõem de propósito
 e nunca alteram a classificação de confiança da auditoria.
 
+A navegação por teclado oferece um salto direto sobre o menu tanto no observatório
+quanto no guia da API. Depois de uma busca enviada pelo formulário principal, o foco chega ao
+nome do perfil carregado ou ao erro correspondente; carregamentos iniciais e
+atualizações acionadas por outros controles não deslocam o foco inesperadamente.
+
 O catálogo de critérios foi revisto em 31 de julho de 2026. O próprio GitHub
 mantém Achievements em prévia pública e não oferece uma API oficial nem um
 contrato completo de limiares; por isso, cada cartão e relatório distingue

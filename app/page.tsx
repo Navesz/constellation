@@ -790,6 +790,9 @@ function Observatory() {
   const [recentProfiles, setRecentProfiles] = useState<RecentAuditProfile[]>([]);
   const [achievementFilter, setAchievementFilter] = useState<AchievementFilter>("all");
   const currentAuditRef = useRef<AuditResponse | null>(null);
+  const auditResultHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  const auditErrorRef = useRef<HTMLElement | null>(null);
+  const pendingAuditFocusLoginRef = useRef<string | null>(null);
   const comparisonRefreshToken = auditRefreshTokenForLogin(
     comparisonRefreshRequest,
     comparisonLogin,
@@ -961,6 +964,27 @@ function Observatory() {
     ? shareState.status
     : "idle";
 
+  useEffect(() => {
+    const pendingLogin = pendingAuditFocusLoginRef.current;
+    if (
+      loading
+      || !pendingLogin
+      || pendingLogin.toLowerCase() !== routeLogin.toLowerCase()
+    ) {
+      return;
+    }
+
+    const focusTarget = errorIsCurrent
+      ? auditErrorRef.current
+      : auditIsCurrent
+        ? auditResultHeadingRef.current
+        : null;
+
+    if (!focusTarget) return;
+    focusTarget.focus();
+    pendingAuditFocusLoginRef.current = null;
+  }, [auditIsCurrent, errorIsCurrent, loading, routeLogin]);
+
   function requestAuditRefresh() {
     setLoading(true);
     setRefreshError("");
@@ -981,6 +1005,7 @@ function Observatory() {
 
     setSearchError("");
     setShareState({ routeKey: shareRouteKey, status: "idle" });
+    pendingAuditFocusLoginRef.current = requestedLogin;
 
     if (requestedLogin.toLowerCase() === routeLogin.toLowerCase()) {
       requestAuditRefresh();
@@ -1318,6 +1343,7 @@ function Observatory() {
 
   return (
     <main>
+      <a className="skip-link" href="#main-content">Pular para o conteúdo principal</a>
       <div className="ambient ambient-one" />
       <div className="ambient ambient-two" />
 
@@ -1342,7 +1368,7 @@ function Observatory() {
       <section className="hero" id="top">
         <div className="hero-copy">
           <p className="kicker"><span /> observatório de perfil</p>
-          <h1>Transforme sinais do GitHub em uma rota clara.</h1>
+          <h1 id="main-content" tabIndex={-1}>Transforme sinais do GitHub em uma rota clara.</h1>
           <p className="hero-lede">
             Uma leitura honesta das suas conquistas, marcos e repositórios — sem contas falsas,
             estrelas combinadas ou atividade vazia.
@@ -1375,10 +1401,16 @@ function Observatory() {
       </section>
 
       {errorIsCurrent ? (
-        <section className="error-panel" role="alert">
+        <section
+          className="error-panel audit-focus-target"
+          role="alert"
+          aria-labelledby="audit-error-title"
+          ref={auditErrorRef}
+          tabIndex={-1}
+        >
           <span aria-hidden="true">!</span>
           <div>
-            <strong>Rota interrompida</strong>
+            <strong id="audit-error-title">Rota interrompida</strong>
             <p>{error}</p>
           </div>
         </section>
@@ -1416,7 +1448,13 @@ function Observatory() {
               <Image src={audit.profile.avatarUrl} alt="" width={72} height={72} unoptimized />
               <div>
                 <span className="eyebrow">perfil observado</span>
-                <h2>{audit.profile.name || audit.profile.login}</h2>
+                <h2
+                  className="audit-focus-target"
+                  ref={auditResultHeadingRef}
+                  tabIndex={-1}
+                >
+                  {audit.profile.name || audit.profile.login}
+                </h2>
                 <a href={audit.profile.htmlUrl} target="_blank" rel="noreferrer">
                   @{audit.profile.login} <span aria-hidden="true">↗</span>
                 </a>
@@ -1717,10 +1755,17 @@ function Observatory() {
 function PageFallback() {
   return (
     <main>
+      <a className="skip-link" href="#main-content">Pular para o conteúdo principal</a>
       <nav className="site-nav">
         <span className="brand"><span className="brand-mark">✦</span> Constellation</span>
       </nav>
-      <section className="loading-grid page-fallback" aria-label="Preparando observatório" aria-live="polite">
+      <section
+        className="loading-grid page-fallback"
+        id="main-content"
+        tabIndex={-1}
+        aria-label="Preparando observatório"
+        aria-live="polite"
+      >
         <div /><div /><div /><div />
       </section>
     </main>
