@@ -1,6 +1,11 @@
 export const AUDIT_REFRESH_WINDOW_MS = 15_000;
 export const AUDIT_REFRESH_MAX_SKEW_MS = 5 * 60_000;
 
+export type AuditRefreshRequest = {
+  login: string;
+  token: string;
+};
+
 export function createAuditRefreshToken(nowMs = Date.now()) {
   return Math.floor(nowMs / AUDIT_REFRESH_WINDOW_MS).toString(36);
 }
@@ -30,6 +35,15 @@ export function buildAuditRequestUrl(login: string, refreshToken?: string | null
   const searchParams = new URLSearchParams({ login });
   if (refreshToken) searchParams.set("refresh", refreshToken);
   return `/api/audit?${searchParams.toString()}`;
+}
+
+export function auditRefreshTokenForLogin(
+  request: AuditRefreshRequest | null,
+  login: string | null | undefined,
+) {
+  return request && login && request.login.toLowerCase() === login.toLowerCase()
+    ? request.token
+    : null;
 }
 
 export function canPreserveAuditAfterRefresh(

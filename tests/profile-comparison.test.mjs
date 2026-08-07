@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { compareProfiles, comparisonAchievementLabel } from "../lib/profile-comparison.ts";
+import {
+  buildProfileComparisonPath,
+  compareProfiles,
+  comparisonAchievementLabel,
+} from "../lib/profile-comparison.ts";
 
 function achievement(slug, unlocked, overrides = {}) {
   return {
@@ -34,6 +38,21 @@ function audit(overrides = {}) {
   };
 }
 
+test("builds an ordered comparison route and rejects ambiguous pairs", () => {
+  assert.equal(
+    buildProfileComparisonPath("OctoCat", "hubot"),
+    "/?login=OctoCat&compare=hubot",
+  );
+  assert.throws(
+    () => buildProfileComparisonPath("octocat", "OCTOCAT"),
+    /dois logins válidos e diferentes/,
+  );
+  assert.throws(
+    () => buildProfileComparisonPath("-invalid", "hubot"),
+    /dois logins válidos e diferentes/,
+  );
+});
+
 test("compares equivalent public metrics with an explicit secondary-minus-primary delta", () => {
   const comparison = compareProfiles(
     audit(),
@@ -54,6 +73,26 @@ test("compares equivalent public metrics with an explicit secondary-minus-primar
       { id: "publicRepositories", difference: 2, leader: "secondary" },
     ],
   );
+});
+
+test("reverses delta direction when the primary and secondary profiles are swapped", () => {
+  const primary = audit();
+  const secondary = audit({
+    profile: { followers: 130, publicRepos: 10 },
+    metrics: { mergedPullRequests: 9, topRepository: { stars: 11 } },
+    visibleAchievementCount: 3,
+  });
+  const forward = compareProfiles(primary, secondary);
+  const reversed = compareProfiles(secondary, primary);
+
+  for (const metric of forward.metrics) {
+    const reversedMetric = reversed.metrics.find((item) => item.id === metric.id);
+    assert.equal(reversedMetric.difference, -metric.difference);
+    assert.equal(
+      reversedMetric.leader,
+      metric.leader === "primary" ? "secondary" : metric.leader === "secondary" ? "primary" : metric.leader,
+    );
+  }
 });
 
 test("keeps an unavailable metric unknown instead of treating it as zero", () => {

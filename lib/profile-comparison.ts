@@ -1,4 +1,5 @@
 import type { AchievementProgress } from "./achievements";
+import { normalizeGitHubLogin } from "./github-profile.ts";
 
 export type ComparisonMetricId =
   | "visibleAchievements"
@@ -66,6 +67,23 @@ type ComparableAudit = {
     earningStatus: AchievementProgress["earningStatus"];
   }>;
 };
+
+export function buildProfileComparisonPath(
+  primaryLogin: string,
+  secondaryLogin: string,
+) {
+  const primary = normalizeGitHubLogin(primaryLogin);
+  const secondary = normalizeGitHubLogin(secondaryLogin);
+  if (!primary || !secondary || primary.toLowerCase() === secondary.toLowerCase()) {
+    throw new Error("A comparação exige dois logins válidos e diferentes.");
+  }
+
+  const parameters = new URLSearchParams({
+    login: primary,
+    compare: secondary,
+  });
+  return `/?${parameters.toString()}`;
+}
 
 function metric(
   id: ComparisonMetricId,

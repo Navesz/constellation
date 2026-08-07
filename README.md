@@ -160,7 +160,9 @@ indisponível até que duas novas leituras permitam calcular uma mudança honest
 Um segundo perfil pode ser adicionado para comparação. A URL preserva os dois
 logins, o painel calcula o delta como `segundo - principal` e omite qualquer
 diferença cuja fonte esteja indisponível. A comparação não cria pontuação geral
-nem declara um vencedor.
+nem declara um vencedor. O controle “Inverter perfis” troca a referência,
+recalcula o sentido dos deltas e atualiza a URL; as leituras já carregadas mudam
+de posição imediatamente enquanto a aplicação confirma novamente os dados públicos.
 
 ## Desenvolvimento
 
