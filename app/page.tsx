@@ -19,7 +19,6 @@ import {
   mergeAuditHistories,
   parseAuditHistory,
   parseAuditHistoryBackup,
-  removeProfileHistory,
   serializeAuditHistory,
   serializeAuditHistoryBackup,
   serializeAuditTimelineCsv,
@@ -34,6 +33,7 @@ import {
   parseAuditHistoryRecordingPreference,
   serializeAuditHistoryRecordingPreference,
 } from "@/lib/audit-history-preference";
+import { clearStoredAuditHistory } from "@/lib/audit-history-storage";
 import {
   ACHIEVEMENT_CATALOG_REVIEWED_AT,
   GITHUB_ACHIEVEMENTS_REFERENCE_URL,
@@ -430,22 +430,32 @@ function AchievementCard({
 function ProgressHistory({
   audit,
   memory,
-  onClear,
+  onClearAll,
+  onClearProfile,
   onDownloadBackup,
   onDownloadTimeline,
   onImportBackup,
   onToggleRecording,
   backupStatus,
+  storedProfileCount,
+  storedSnapshotCount,
 }: {
   audit: AuditResponse;
   memory: LocalProgressMemory;
-  onClear: () => void;
+  onClearAll: () => void;
+  onClearProfile: () => void;
   onDownloadBackup: () => void;
   onDownloadTimeline: () => void;
   onImportBackup: (event: ChangeEvent<HTMLInputElement>) => void;
   onToggleRecording: () => void;
   backupStatus: string;
+  storedProfileCount: number;
+  storedSnapshotCount: number;
 }) {
+  const [clearConfirmation, setClearConfirmation] = useState<"profile" | "all" | null>(null);
+  const clearConfirmationRef = useRef<HTMLElement | null>(null);
+  const profileClearButtonRef = useRef<HTMLButtonElement | null>(null);
+  const allClearButtonRef = useRef<HTMLButtonElement | null>(null);
   const changedSignals = memory.changes
     ? [
         { value: memory.changes.followers, label: "seguidores" },
@@ -468,6 +478,27 @@ function ProgressHistory({
     dateStyle: "short",
     timeStyle: "short",
   });
+  const canClearProfile = memory.storageAvailable
+    && !memory.cleared
+    && (memory.recorded || Boolean(memory.previous));
+
+  useEffect(() => {
+    if (clearConfirmation) clearConfirmationRef.current?.focus();
+  }, [clearConfirmation]);
+
+  function cancelClear() {
+    const trigger = clearConfirmation === "profile"
+      ? profileClearButtonRef.current
+      : allClearButtonRef.current;
+    setClearConfirmation(null);
+    window.requestAnimationFrame(() => trigger?.focus());
+  }
+
+  function confirmClear() {
+    if (clearConfirmation === "profile") onClearProfile();
+    if (clearConfirmation === "all") onClearAll();
+    setClearConfirmation(null);
+  }
 
   return (
     <section className="history-panel" aria-labelledby="history-title">
@@ -589,8 +620,64 @@ function ProgressHistory({
         </div>
       ) : null}
 
-      {memory.storageAvailable && !memory.cleared && (memory.recorded || memory.previous) ? (
-        <button className="history-clear" type="button" onClick={onClear}>Apagar histórico deste perfil</button>
+      {canClearProfile || storedSnapshotCount > 0 ? (
+        <div className="history-clear-zone">
+          <div className="history-clear-actions">
+            {canClearProfile ? (
+              <button
+                className="history-clear"
+                type="button"
+                ref={profileClearButtonRef}
+                aria-expanded={clearConfirmation === "profile"}
+                aria-controls="history-clear-confirmation"
+                onClick={() => setClearConfirmation("profile")}
+              >
+                Apagar histórico deste perfil
+              </button>
+            ) : null}
+            {storedSnapshotCount > 0 ? (
+              <button
+                className="history-clear history-clear-all"
+                type="button"
+                ref={allClearButtonRef}
+                aria-expanded={clearConfirmation === "all"}
+                aria-controls="history-clear-confirmation"
+                onClick={() => setClearConfirmation("all")}
+              >
+                Apagar toda a memória
+              </button>
+            ) : null}
+          </div>
+          {clearConfirmation ? (
+            <section
+              className="history-clear-confirmation"
+              id="history-clear-confirmation"
+              aria-labelledby="history-clear-confirmation-title"
+            >
+              <strong
+                className="audit-focus-target"
+                id="history-clear-confirmation-title"
+                ref={clearConfirmationRef}
+                tabIndex={-1}
+              >
+                {clearConfirmation === "profile"
+                  ? `Apagar as leituras de @${audit.profile.login}?`
+                  : `Apagar ${storedSnapshotCount} ${storedSnapshotCount === 1 ? "leitura" : "leituras"} de ${storedProfileCount} ${storedProfileCount === 1 ? "perfil" : "perfis"}?`}
+              </strong>
+              <p>
+                {clearConfirmation === "profile"
+                  ? "Esta ação não pode ser desfeita. Se as gravações estiverem ativas, uma futura leitura completa criará uma nova linha de base."
+                  : "Esta ação não pode ser desfeita e também pausará novas gravações. Baixe um backup antes se quiser preservar uma cópia."}
+              </p>
+              <div>
+                <button className="history-clear-confirm" type="button" onClick={confirmClear}>
+                  {clearConfirmation === "profile" ? "Sim, apagar este perfil" : "Sim, apagar tudo e pausar"}
+                </button>
+                <button type="button" onClick={cancelClear}>Cancelar</button>
+              </div>
+            </section>
+          ) : null}
+        </div>
       ) : null}
       {!memory.recordingEnabled ? (
         <p className="history-note">Novas gravações pausadas: as próximas leituras não alterarão a linha do tempo.</p>
@@ -1263,19 +1350,16 @@ function Observatory() {
     }
   }
 
-  function clearLocalProgress() {
+  function clearProfileLocalProgress() {
     if (!audit || !localProgress) return;
 
     try {
-      const history = parseAuditHistory(window.localStorage.getItem(AUDIT_HISTORY_STORAGE_KEY));
-      const nextHistory = removeProfileHistory(history, audit.profile.login);
-
-      if (Object.keys(nextHistory).length) {
-        window.localStorage.setItem(AUDIT_HISTORY_STORAGE_KEY, serializeAuditHistory(nextHistory));
-      } else {
-        window.localStorage.removeItem(AUDIT_HISTORY_STORAGE_KEY);
-      }
-      setRecentProfiles(listRecentAuditProfiles(nextHistory));
+      const result = clearStoredAuditHistory(window.localStorage, {
+        scope: "profile",
+        login: audit.profile.login,
+      });
+      setRecentProfiles(listRecentAuditProfiles(result.history));
+      setHistoryBackupStatus(`Histórico de @${audit.profile.login} apagado deste navegador.`);
 
       setLocalProgress({
         ...localProgress,
@@ -1283,6 +1367,30 @@ function Observatory() {
         changes: null,
         timeline: [],
         recorded: false,
+        cleared: true,
+      });
+    } catch {
+      setLocalProgress({
+        ...localProgress,
+        storageAvailable: false,
+      });
+    }
+  }
+
+  function clearAllLocalProgress() {
+    if (!localProgress) return;
+
+    try {
+      clearStoredAuditHistory(window.localStorage, { scope: "all" });
+      setRecentProfiles([]);
+      setHistoryBackupStatus("Toda a memória de auditorias foi apagada e novas gravações foram pausadas.");
+      setLocalProgress({
+        ...localProgress,
+        previous: null,
+        changes: null,
+        timeline: [],
+        recorded: false,
+        recordingEnabled: false,
         cleared: true,
       });
     } catch {
@@ -1620,12 +1728,18 @@ function Observatory() {
             <ProgressHistory
               audit={audit}
               memory={localProgress}
-              onClear={clearLocalProgress}
+              onClearAll={clearAllLocalProgress}
+              onClearProfile={clearProfileLocalProgress}
               onDownloadBackup={downloadHistoryBackup}
               onDownloadTimeline={downloadHistoryTimeline}
               onImportBackup={importHistoryBackup}
               onToggleRecording={toggleHistoryRecording}
               backupStatus={historyBackupStatus}
+              storedProfileCount={recentProfiles.length}
+              storedSnapshotCount={recentProfiles.reduce(
+                (total, profile) => total + profile.observationCount,
+                0,
+              )}
             />
           ) : null}
 

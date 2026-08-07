@@ -1158,8 +1158,17 @@ footer {
   color: rgba(255, 250, 240, 0.75);
 }
 
-.history-clear {
+.history-clear-zone {
   margin-top: 20px;
+}
+
+.history-clear-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+}
+
+.history-clear {
   border: 0;
   border-bottom: 1px solid currentColor;
   padding: 3px 0;
@@ -1174,6 +1183,62 @@ footer {
 
 .history-clear:hover {
   color: var(--signal-dark);
+}
+
+.history-clear-all {
+  color: var(--signal-dark);
+}
+
+.history-clear-confirmation {
+  max-width: 720px;
+  margin-top: 16px;
+  border: 1px solid var(--signal-dark);
+  padding: 18px;
+  background: rgba(255, 92, 53, 0.08);
+}
+
+.history-clear-confirmation > strong {
+  display: block;
+  width: fit-content;
+  font-size: 0.92rem;
+}
+
+.history-clear-confirmation > p {
+  margin: 8px 0 0;
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  line-height: 1.55;
+}
+
+.history-clear-confirmation > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.history-clear-confirmation button {
+  min-height: 34px;
+  border: 1px solid var(--ink);
+  padding: 0 12px;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.history-clear-confirmation button:hover {
+  color: var(--paper-bright);
+  background: var(--ink);
+}
+
+.history-clear-confirmation .history-clear-confirm {
+  border-color: var(--signal-dark);
+  color: var(--paper-bright);
+  background: var(--signal-dark);
 }
 
 .history-note {

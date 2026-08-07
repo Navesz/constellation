@@ -137,7 +137,9 @@ ser repetida. A orientação também acompanha os relatórios Markdown e JSON.
 
 Auditorias completas também formam um histórico local com até 12 estados por
 perfil e oito perfis recentes. Essa memória fica somente no navegador, não é
-incluída nos links compartilhados e pode ser apagada por perfil na interface.
+incluída nos links compartilhados e pode ser apagada por perfil ou por completo
+na interface. As duas exclusões exigem confirmação; a limpeza total também pausa
+novas gravações para que a memória não seja recriada sem uma decisão explícita.
 Novas gravações podem ser pausadas e retomadas com uma preferência persistida
 somente no dispositivo; pausar preserva tudo que já foi salvo, enquanto retomar
 registra imediatamente a leitura atual quando ela estiver completa.
