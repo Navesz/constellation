@@ -64,6 +64,7 @@ const responseStates = [
 export default function ApiDocsPage() {
   return (
     <main className="docs-shell">
+      <a className="skip-link" href="#main-content">Pular para o conteúdo principal</a>
       <div className="ambient ambient-one" />
       <div className="ambient ambient-two" />
 
@@ -89,7 +90,7 @@ export default function ApiDocsPage() {
         <header className="docs-hero">
           <div>
             <p className="kicker"><span /> dados públicos · contrato v{AUDIT_SCHEMA_VERSION}</p>
-            <h1>Integre o observatório sem adivinhar o contrato.</h1>
+            <h1 id="main-content" tabIndex={-1}>Integre o observatório sem adivinhar o contrato.</h1>
             <p>
               Uma API somente de leitura para observar sinais públicos de perfis do GitHub.
               Respostas parciais identificam cada lacuna; ausência de dados nunca vira zero por conveniência.

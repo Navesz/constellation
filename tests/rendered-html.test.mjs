@@ -48,6 +48,8 @@ test("server-renders the finished Constellation experience", async () => {
   assert.match(html, /observatório de perfil/);
   assert.match(html, /Somente dados públicos/);
   assert.match(html, /href="\/docs"[^>]*>Guia da API/);
+  assert.match(html, /class="skip-link" href="#main-content">Pular para o conteúdo principal/);
+  assert.match(html, /<h1 id="main-content" tabindex="-1">Transforme sinais/);
   assert.match(html, /\/og\.png/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
 });
@@ -246,6 +248,8 @@ test("server-renders a human integration guide next to the machine contracts", a
   const html = await response.text();
   assert.match(html, /<title>Guia da API — Constellation<\/title>/i);
   assert.match(html, /Integre o observatório sem adivinhar o contrato\./);
+  assert.match(html, /class="skip-link" href="#main-content">Pular para o conteúdo principal/);
+  assert.match(html, /<h1 id="main-content" tabindex="-1">Integre o observatório/);
   assert.match(html, /\/api\/audit\?login=octocat/);
   assert.match(html, /\/api\/audit\/schema\/2/);
   assert.match(html, /\/api\/export\/schema\/2/);
