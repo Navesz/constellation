@@ -116,6 +116,73 @@ function exportSchemaOperation(version: 1 | typeof AUDIT_EXPORT_VERSION) {
   } as const;
 }
 
+function metadataOnlyOperation<T extends { responses: Record<string, unknown> }>(
+  operation: T,
+  summary: string,
+  operationId: string,
+) {
+  const responses = Object.fromEntries(
+    Object.entries(operation.responses).map(([status, response]) => {
+      if (!response || typeof response !== "object" || "$ref" in response) {
+        return [status, response];
+      }
+      const metadata = { ...response } as Record<string, unknown>;
+      delete metadata.content;
+      return [status, metadata];
+    }),
+  );
+
+  return { ...operation, summary, operationId, responses };
+}
+
+const statusOperation = {
+  tags: ["Operational"],
+  summary: "Check whether the Constellation service is responding",
+  description:
+    "Checks the application layer only. It does not contact GitHub or consume an upstream request.",
+  operationId: "getServiceStatus",
+  responses: {
+    "200": {
+      description: "The application layer is responding.",
+      headers: {
+        ...requestIdResponseHeaders,
+        "Cache-Control": {
+          description: "Status observations must not be reused.",
+          schema: { type: "string", const: "no-store" },
+        },
+        Link: {
+          description: "Links to contracts, documentation, and this status resource.",
+          schema: { type: "string" },
+        },
+      },
+      content: {
+        "application/json": {
+          schema: { $ref: "#/components/schemas/ServiceStatus" },
+        },
+      },
+    },
+  },
+} as const;
+
+const openApiOperation = {
+  tags: ["Contract"],
+  summary: "Read the OpenAPI service description",
+  operationId: "getOpenApiDocument",
+  parameters: [conditionalContractParameter],
+  responses: {
+    "200": {
+      description: "The OpenAPI 3.1.1 entry document for this service.",
+      headers: { ETag: entityTagHeader, ...requestIdResponseHeaders },
+      content: {
+        [OPENAPI_MEDIA_TYPE]: {
+          schema: { type: "object" },
+        },
+      },
+    },
+    "304": notModifiedResponse,
+  },
+} as const;
+
 export const openApiDocument = {
   openapi: "3.1.1",
   info: {
@@ -194,34 +261,12 @@ export const openApiDocument = {
       },
     },
     [STATUS_PATH]: {
-      get: {
-        tags: ["Operational"],
-        summary: "Check whether the Constellation service is responding",
-        description:
-          "Checks the application layer only. It does not contact GitHub or consume an upstream request.",
-        operationId: "getServiceStatus",
-        responses: {
-          "200": {
-            description: "The application layer is responding.",
-            headers: {
-              ...requestIdResponseHeaders,
-              "Cache-Control": {
-                description: "Status observations must not be reused.",
-                schema: { type: "string", const: "no-store" },
-              },
-              Link: {
-                description: "Links to contracts, documentation, and this status resource.",
-                schema: { type: "string" },
-              },
-            },
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ServiceStatus" },
-              },
-            },
-          },
-        },
-      },
+      get: statusOperation,
+      head: metadataOnlyOperation(
+        statusOperation,
+        "Check service status headers without a response body",
+        "headServiceStatus",
+      ),
     },
     "/api/audit/schema": {
       get: {
@@ -230,9 +275,19 @@ export const openApiDocument = {
         operationId: "getCurrentAuditSchema",
         deprecated: true,
       },
+      head: metadataOnlyOperation(
+        { ...auditSchemaOperation, deprecated: true },
+        "Check the current audit schema headers through the legacy alias",
+        "headCurrentAuditSchema",
+      ),
     },
     [AUDIT_SCHEMA_PATH]: {
       get: auditSchemaOperation,
+      head: metadataOnlyOperation(
+        auditSchemaOperation,
+        "Check the audit schema headers without a response body",
+        "headAuditSchema",
+      ),
     },
     [AUDIT_EXPORT_SCHEMA_ALIAS_PATH]: {
       get: {
@@ -241,32 +296,35 @@ export const openApiDocument = {
         operationId: "getCurrentAuditExportSchema",
         deprecated: true,
       },
+      head: metadataOnlyOperation(
+        { ...exportSchemaOperation(AUDIT_EXPORT_VERSION), deprecated: true },
+        "Check the current export schema headers through its stable alias",
+        "headCurrentAuditExportSchema",
+      ),
     },
     [LEGACY_AUDIT_EXPORT_SCHEMA_PATH]: {
       get: exportSchemaOperation(1),
+      head: metadataOnlyOperation(
+        exportSchemaOperation(1),
+        "Check legacy export schema headers without a response body",
+        "headLegacyAuditExportSchema",
+      ),
     },
     [AUDIT_EXPORT_SCHEMA_PATH]: {
       get: exportSchemaOperation(AUDIT_EXPORT_VERSION),
+      head: metadataOnlyOperation(
+        exportSchemaOperation(AUDIT_EXPORT_VERSION),
+        "Check export schema headers without a response body",
+        "headAuditExportSchema",
+      ),
     },
     [OPENAPI_PATH]: {
-      get: {
-        tags: ["Contract"],
-        summary: "Read the OpenAPI service description",
-        operationId: "getOpenApiDocument",
-        parameters: [conditionalContractParameter],
-        responses: {
-          "200": {
-            description: "The OpenAPI 3.1.1 entry document for this service.",
-            headers: { ETag: entityTagHeader, ...requestIdResponseHeaders },
-            content: {
-              [OPENAPI_MEDIA_TYPE]: {
-                schema: { type: "object" },
-              },
-            },
-          },
-          "304": notModifiedResponse,
-        },
-      },
+      get: openApiOperation,
+      head: metadataOnlyOperation(
+        openApiOperation,
+        "Check OpenAPI description headers without a response body",
+        "headOpenApiDocument",
+      ),
     },
   },
   components: {

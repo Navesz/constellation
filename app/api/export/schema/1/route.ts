@@ -1,7 +1,11 @@
 import { legacyAuditExportJsonSchema } from "@/lib/audit-export-schema";
 import { createConditionalTextHandler } from "@/lib/http-validators";
 import { PUBLIC_API_LINK_HEADER } from "@/lib/openapi";
-import { publicApiHeaders, publicApiOptionsResponse } from "@/lib/public-api";
+import {
+  publicApiHeadResponse,
+  publicApiHeaders,
+  publicApiOptionsResponse,
+} from "@/lib/public-api";
 
 export function OPTIONS() {
   return publicApiOptionsResponse();
@@ -19,4 +23,8 @@ const handleConditionalSchema = createConditionalTextHandler(
 
 export function GET(request: Request) {
   return handleConditionalSchema(request);
+}
+
+export async function HEAD(request: Request) {
+  return publicApiHeadResponse(await GET(request));
 }

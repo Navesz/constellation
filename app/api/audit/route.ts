@@ -24,6 +24,7 @@ const githubHeaders = {
   "User-Agent": "constellation-profile-observatory",
   "X-GitHub-Api-Version": "2026-03-10",
 };
+const AUDIT_API_ALLOWED_METHODS = "GET, OPTIONS";
 
 type GitHubUser = {
   login: string;
@@ -84,11 +85,25 @@ function auditError(
 ) {
   const responseHeaders = new Headers(headers);
   responseHeaders.set("Link", PUBLIC_API_LINK_HEADER);
-  return Response.json(body, { status, headers: publicApiHeaders(responseHeaders) });
+  return Response.json(body, {
+    status,
+    headers: publicApiHeaders(responseHeaders, AUDIT_API_ALLOWED_METHODS),
+  });
 }
 
 export function OPTIONS() {
-  return publicApiOptionsResponse();
+  return publicApiOptionsResponse(AUDIT_API_ALLOWED_METHODS);
+}
+
+export function HEAD() {
+  return new Response(null, {
+    status: 405,
+    headers: publicApiHeaders({
+      Allow: AUDIT_API_ALLOWED_METHODS,
+      "Cache-Control": "no-store",
+      Link: PUBLIC_API_LINK_HEADER,
+    }, AUDIT_API_ALLOWED_METHODS),
+  });
 }
 
 export async function GET(request: Request) {
@@ -223,7 +238,7 @@ export async function GET(request: Request) {
           "Cache-Control": warnings.length
             ? "public, s-maxage=30, stale-while-revalidate=60"
             : "public, s-maxage=300, stale-while-revalidate=600",
-        }),
+        }, AUDIT_API_ALLOWED_METHODS),
       },
     );
   } catch (error) {

@@ -124,6 +124,19 @@ test("serves the machine-readable audit schema with long-lived caching", async (
   assert.equal(unchanged.headers.get("x-constellation-schema-version"), "2");
   assert.notEqual(publicRequestId(unchanged), requestId);
   assert.equal(await unchanged.text(), "");
+
+  const unchangedHead = await worker.fetch(
+    new Request("http://localhost/api/audit/schema/2", {
+      method: "HEAD",
+      headers: { "If-None-Match": response.headers.get("etag") ?? "" },
+    }),
+    environment,
+    executionContext,
+  );
+  assert.equal(unchangedHead.status, 304);
+  assert.equal(unchangedHead.headers.get("etag"), response.headers.get("etag"));
+  publicRequestId(unchangedHead);
+  assert.equal(await unchangedHead.text(), "");
 });
 
 test("serves current and legacy export schemas with explicit versions", async () => {
@@ -275,6 +288,8 @@ test("server-renders a human integration guide next to the machine contracts", a
   assert.match(html, /\/api\/openapi\.json/);
   assert.match(html, /If-None-Match/);
   assert.match(html, /X-Constellation-Request-Id/);
+  assert.match(html, /GET · HEAD/);
+  assert.match(html, /Método não permitido/);
   assert.match(html, /\/api\/status/);
   assert.match(html, /Saúde sem gastar uma consulta externa\./);
   assert.match(html, /Retry-After/);
@@ -310,10 +325,13 @@ test("answers CORS preflight consistently for the public API routes", async () =
 
     assert.equal(response.status, 204);
     assert.equal(response.headers.get("access-control-allow-origin"), "*");
-    assert.equal(response.headers.get("access-control-allow-methods"), "GET, OPTIONS");
+    const allowedMethods = path === "/api/audit"
+      ? "GET, OPTIONS"
+      : "GET, HEAD, OPTIONS";
+    assert.equal(response.headers.get("access-control-allow-methods"), allowedMethods);
     assert.equal(response.headers.get("access-control-allow-headers"), "Accept, Content-Type, If-None-Match");
     assert.equal(response.headers.get("access-control-max-age"), "86400");
-    assert.equal(response.headers.get("allow"), "GET, OPTIONS");
+    assert.equal(response.headers.get("allow"), allowedMethods);
     assert.match(
       response.headers.get("access-control-expose-headers") ?? "",
       /X-Constellation-Request-Id/,
@@ -322,6 +340,70 @@ test("answers CORS preflight consistently for the public API routes", async () =
     assert.equal(response.headers.get("x-content-type-options"), "nosniff");
     assert.equal(await response.text(), "");
   }
+});
+
+test("serves metadata-only HEAD responses without contacting GitHub", async (context) => {
+  const originalFetch = globalThis.fetch;
+  let externalRequestCount = 0;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+  globalThis.fetch = async () => {
+    externalRequestCount += 1;
+    return new Response("Unexpected request", { status: 500 });
+  };
+
+  const worker = await loadWorker();
+  for (const path of [
+    "/api/status",
+    "/api/openapi.json",
+    "/api/audit/schema",
+    "/api/audit/schema/2",
+    "/api/export/schema",
+    "/api/export/schema/1",
+    "/api/export/schema/2",
+  ]) {
+    const response = await worker.fetch(
+      new Request(`http://localhost${path}`, { method: "HEAD" }),
+      environment,
+      executionContext,
+    );
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("access-control-allow-methods"), "GET, HEAD, OPTIONS");
+    assert.equal(response.headers.get("link"), publicApiLinkHeader);
+    publicRequestId(response);
+    assert.equal(await response.text(), "");
+  }
+  assert.equal(externalRequestCount, 0);
+});
+
+test("rejects audit HEAD requests before contacting GitHub", async (context) => {
+  const originalFetch = globalThis.fetch;
+  let externalRequestCount = 0;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+  globalThis.fetch = async () => {
+    externalRequestCount += 1;
+    return new Response("Unexpected request", { status: 500 });
+  };
+
+  const worker = await loadWorker();
+  const response = await worker.fetch(
+    new Request("http://localhost/api/audit?login=octocat", { method: "HEAD" }),
+    environment,
+    executionContext,
+  );
+
+  assert.equal(response.status, 405);
+  assert.equal(response.headers.get("allow"), "GET, OPTIONS");
+  assert.equal(response.headers.get("access-control-allow-methods"), "GET, OPTIONS");
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(response.headers.get("link"), publicApiLinkHeader);
+  publicRequestId(response);
+  assert.equal(await response.text(), "");
+  assert.equal(externalRequestCount, 0);
 });
 
 test("rejects an invalid GitHub login before making an external request", async () => {

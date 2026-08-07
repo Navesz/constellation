@@ -4,7 +4,11 @@ import {
   openApiDocument,
 } from "@/lib/openapi";
 import { createConditionalTextHandler } from "@/lib/http-validators";
-import { publicApiHeaders, publicApiOptionsResponse } from "@/lib/public-api";
+import {
+  publicApiHeadResponse,
+  publicApiHeaders,
+  publicApiOptionsResponse,
+} from "@/lib/public-api";
 
 export function OPTIONS() {
   return publicApiOptionsResponse();
@@ -21,4 +25,8 @@ const handleConditionalDescription = createConditionalTextHandler(
 
 export function GET(request: Request) {
   return handleConditionalDescription(request);
+}
+
+export async function HEAD(request: Request) {
+  return publicApiHeadResponse(await GET(request));
 }
