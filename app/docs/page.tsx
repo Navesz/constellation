@@ -143,6 +143,11 @@ export default function ApiDocsPage() {
               cabeçalho <code>Link</code>. Exportações JSON carregam a URL do próprio esquema, e os
               cabeçalhos de versão ficam expostos para navegadores.
             </p>
+            <p>
+              OpenAPI e os schemas também retornam <code>ETag</code>. Reenvie esse valor em
+              <code> If-None-Match</code> para receber <code>304</code> sem corpo quando o contrato
+              não mudou; cache, CORS, descoberta e versão continuam disponíveis na resposta.
+            </p>
             <div className="docs-contract-links">
               <a href={OPENAPI_PATH}>Abrir OpenAPI <span aria-hidden="true">↗</span></a>
               <a href={AUDIT_SCHEMA_PATH}>Abrir JSON Schema <span aria-hidden="true">↗</span></a>

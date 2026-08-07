@@ -78,6 +78,14 @@ test("describes every public GET route and the versioned audit payload", () => {
   assert.equal(operation.responses["429"].$ref, "#/components/responses/RateLimited");
   assert.equal(openApiDocument.paths["/api/audit/schema"].get.deprecated, true);
   assert.equal(
+    openApiDocument.paths[AUDIT_SCHEMA_PATH].get.parameters[0].name,
+    "If-None-Match",
+  );
+  assert.equal(
+    openApiDocument.paths[AUDIT_SCHEMA_PATH].get.responses["304"].headers.ETag.schema.pattern,
+    '^W/"sha256-[0-9a-f]{64}"$',
+  );
+  assert.equal(
     openApiDocument.paths[AUDIT_EXPORT_SCHEMA_ALIAS_PATH].get.operationId,
     "getCurrentAuditExportSchema",
   );

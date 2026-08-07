@@ -38,14 +38,34 @@ const jsonErrorContent = {
   },
 } as const;
 
+const conditionalContractParameter = {
+  name: "If-None-Match",
+  in: "header",
+  required: false,
+  description: "Previously returned ETag. A matching validator produces an empty 304 response.",
+  schema: { type: "string" },
+} as const;
+
+const entityTagHeader = {
+  description: "Weak content validator for conditional requests.",
+  schema: { type: "string", pattern: '^W/"sha256-[0-9a-f]{64}"$' },
+} as const;
+
+const notModifiedResponse = {
+  description: "The contract has not changed since the supplied If-None-Match validator.",
+  headers: { ETag: entityTagHeader },
+} as const;
+
 const auditSchemaOperation = {
   tags: ["Contract"],
   summary: "Read the current audit response schema",
   operationId: "getAuditSchema",
+  parameters: [conditionalContractParameter],
   responses: {
     "200": {
       description: `JSON Schema Draft 2020-12 for audit response version ${AUDIT_SCHEMA_VERSION}.`,
       headers: {
+        ETag: entityTagHeader,
         "X-Constellation-Schema-Version": {
           description: "Audit response schema version.",
           schema: { type: "integer", const: AUDIT_SCHEMA_VERSION },
@@ -57,6 +77,7 @@ const auditSchemaOperation = {
         },
       },
     },
+    "304": notModifiedResponse,
   },
 } as const;
 
@@ -67,10 +88,12 @@ function exportSchemaOperation(version: 1 | typeof AUDIT_EXPORT_VERSION) {
     operationId: version === AUDIT_EXPORT_VERSION
       ? "getAuditExportSchema"
       : "getLegacyAuditExportSchema",
+    parameters: [conditionalContractParameter],
     responses: {
       "200": {
         description: `JSON Schema Draft 2020-12 for audit export version ${version}.`,
         headers: {
+          ETag: entityTagHeader,
           "X-Constellation-Export-Version": {
             description: "Audit export envelope version.",
             schema: { type: "integer", const: version },
@@ -82,6 +105,7 @@ function exportSchemaOperation(version: 1 | typeof AUDIT_EXPORT_VERSION) {
           },
         },
       },
+      "304": notModifiedResponse,
     },
   } as const;
 }
@@ -221,15 +245,18 @@ export const openApiDocument = {
         tags: ["Contract"],
         summary: "Read the OpenAPI service description",
         operationId: "getOpenApiDocument",
+        parameters: [conditionalContractParameter],
         responses: {
           "200": {
             description: "The OpenAPI 3.1.1 entry document for this service.",
+            headers: { ETag: entityTagHeader },
             content: {
               [OPENAPI_MEDIA_TYPE]: {
                 schema: { type: "object" },
               },
             },
           },
+          "304": notModifiedResponse,
         },
       },
     },
