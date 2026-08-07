@@ -61,6 +61,7 @@ const responseStates = [
   ["200", "Auditoria completa ou parcial", "Confira sources, sourceDiagnostics e warnings antes de usar métricas secundárias."],
   ["400", "Consulta inválida", "Login, parâmetro repetido, chave de atualização expirada ou parâmetro desconhecido."],
   ["404", "Perfil não encontrado", "O login não corresponde a um perfil público do GitHub."],
+  ["405", "Método não permitido", "Use GET na auditoria; HEAD fica restrito às rotas locais de status e contratos."],
   ["429", "Limite temporário", "Use Retry-After ou retryAt para decidir quando repetir a consulta."],
   ["502", "Resposta inesperada", "O GitHub não entregou uma resposta utilizável para a fonte obrigatória."],
   ["504", "Tempo esgotado", "A consulta obrigatória excedeu o prazo de oito segundos."],
@@ -105,7 +106,7 @@ export default function ApiDocsPage() {
             <div><dt>Base</dt><dd>{PUBLIC_SITE_URL}</dd></div>
             <div><dt>Formato</dt><dd>JSON · UTF-8</dd></div>
             <div><dt>Acesso</dt><dd>Dados públicos · site privado</dd></div>
-            <div><dt>CORS</dt><dd>GET e OPTIONS</dd></div>
+            <div><dt>CORS</dt><dd>GET, HEAD e OPTIONS</dd></div>
           </dl>
         </header>
 
@@ -132,11 +133,11 @@ export default function ApiDocsPage() {
           </div>
           <div className="docs-route-grid">
             <article><span>GET</span><code>/api/audit?login=octocat</code><p>Executa a leitura pública do perfil.</p></article>
-            <article><span>GET</span><code>{AUDIT_SCHEMA_PATH}</code><p>Publica o JSON Schema Draft 2020-12 da resposta.</p></article>
-            <article><span>GET</span><code>{AUDIT_EXPORT_SCHEMA_PATH}</code><p>Valida arquivos exportados sem depender da interface.</p></article>
-            <article><span>GET</span><code>{OPENAPI_PATH}</code><p>Descreve parâmetros, respostas e erros em OpenAPI 3.1.1.</p></article>
+            <article><span>GET · HEAD</span><code>{AUDIT_SCHEMA_PATH}</code><p>Publica o JSON Schema Draft 2020-12 da resposta.</p></article>
+            <article><span>GET · HEAD</span><code>{AUDIT_EXPORT_SCHEMA_PATH}</code><p>Valida arquivos exportados sem depender da interface.</p></article>
+            <article><span>GET · HEAD</span><code>{OPENAPI_PATH}</code><p>Descreve parâmetros, respostas e erros em OpenAPI 3.1.1.</p></article>
             <article><span>GET</span><code>{API_DOCS_PATH}</code><p>Mantém este guia humano junto do serviço.</p></article>
-            <article className="docs-route-wide"><span>GET</span><code>{STATUS_PATH}</code><p>Confirma a aplicação sem consultar o GitHub nem consumir a cota externa.</p></article>
+            <article className="docs-route-wide"><span>GET · HEAD</span><code>{STATUS_PATH}</code><p>Confirma a aplicação sem consultar o GitHub nem consumir a cota externa.</p></article>
           </div>
         </section>
 
@@ -158,6 +159,11 @@ export default function ApiDocsPage() {
               Cada resposta da API inclui <code>X-Constellation-Request-Id</code>, um UUID aleatório
               que não codifica login nem dados do perfil. Registre-o junto do status nos logs da
               integração para manter uma referência segura quando uma leitura falhar.
+            </p>
+            <p>
+              Use <code>HEAD</code> no status, OpenAPI ou schemas para conferir disponibilidade,
+              versão, cache e descoberta sem transferir o corpo. A auditoria rejeita
+              <code> HEAD</code> antes de consultar o GitHub, evitando consumo externo acidental.
             </p>
             <div className="docs-contract-links">
               <a href={OPENAPI_PATH}>Abrir OpenAPI <span aria-hidden="true">↗</span></a>

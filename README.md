@@ -100,8 +100,11 @@ resposta da auditoria. A rota de status não consulta o GitHub, responde com
 `Cache-Control: no-store` e distingue explicitamente saúde da aplicação de
 disponibilidade do serviço externo.
 As rotas públicas aceitam `GET` entre origens com CORS explícito e respondem a
-preflight `OPTIONS`; `Link`, `Retry-After` e a versão do esquema ficam expostos
-ao navegador junto com `ETag`, e `If-None-Match` é aceito explicitamente.
+preflight `OPTIONS`; status, OpenAPI e schemas também aceitam `HEAD`, preservando
+status e cabeçalhos sem transferir o corpo. A auditoria rejeita `HEAD` com `405`
+antes de consultar o GitHub, evitando consumo externo acidental. `Link`,
+`Retry-After` e a versão do esquema ficam expostos ao navegador junto com
+`ETag`, e `If-None-Match` é aceito explicitamente.
 Cada resposta da API recebe ainda `X-Constellation-Request-Id`, um UUID v4
 aleatório exposto por CORS. O valor não incorpora login, parâmetros ou dados do
 perfil e pode ser preservado nos logs da integração como referência operacional.

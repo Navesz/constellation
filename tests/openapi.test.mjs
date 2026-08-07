@@ -132,3 +132,19 @@ test("documents the opaque request ID on every API response", () => {
     }
   }
 });
+
+test("documents metadata-only HEAD operations only for local resources", () => {
+  assert.equal(openApiDocument.paths["/api/audit"].head, undefined);
+
+  const operationIds = new Set();
+  for (const [path, pathItem] of Object.entries(openApiDocument.paths)) {
+    if (path === "/api/audit") continue;
+    assert.ok(pathItem.head, `${path} should document HEAD`);
+    assert.equal(operationIds.has(pathItem.head.operationId), false);
+    operationIds.add(pathItem.head.operationId);
+
+    for (const response of Object.values(pathItem.head.responses)) {
+      assert.equal("content" in response, false);
+    }
+  }
+});

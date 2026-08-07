@@ -1,5 +1,9 @@
 import { PUBLIC_API_LINK_HEADER } from "@/lib/openapi";
-import { publicApiHeaders, publicApiOptionsResponse } from "@/lib/public-api";
+import {
+  publicApiHeadResponse,
+  publicApiHeaders,
+  publicApiOptionsResponse,
+} from "@/lib/public-api";
 import { buildServiceStatus } from "@/lib/service-status";
 
 export function OPTIONS() {
@@ -14,4 +18,8 @@ export function GET(request: Request) {
       Link: PUBLIC_API_LINK_HEADER,
     }),
   });
+}
+
+export function HEAD(request: Request) {
+  return publicApiHeadResponse(GET(request));
 }
