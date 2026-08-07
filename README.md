@@ -61,6 +61,9 @@ e o contrato legado da versão 1 permanece disponível em `GET /api/export/schem
 O guia em `GET /docs` também oferece um verificador de arquivos que roda somente
 no navegador, aceita os dois formatos e rejeita backups ou envelopes com dados
 inesperados sem fazer upload nem consultar o GitHub.
+Depois da validação, o mesmo retrato pode ser recuperado localmente como relatório
+Markdown, HTML autocontido ou JSON normalizado. Um arquivo legado v1 é migrado para
+o contrato v2 apenas no novo download; o original permanece intocado.
 O verificador exige ainda que a rota compartilhável use somente `login` e
 `compare`, corresponda exatamente aos perfis embutidos e não carregue caminho,
 fragmento ou credenciais. Links da origem oficial podem ser abertos diretamente;

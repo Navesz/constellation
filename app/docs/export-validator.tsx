@@ -7,6 +7,8 @@ import {
   readAuditDataExport,
   type ParsedAuditDataExport,
 } from "@/lib/audit-export";
+import { buildAuditExportArtifacts } from "@/lib/audit-export-artifacts";
+import { downloadTextFile } from "@/lib/browser-download";
 
 const MAX_EXPORT_FILE_BYTES = 512 * 1024;
 
@@ -57,6 +59,9 @@ export function ExportValidator() {
   const shareOrigin = valid
     ? new URL(valid.parsed.data.shareUrl).origin
     : null;
+  const artifacts = valid
+    ? buildAuditExportArtifacts(valid.parsed)
+    : [];
 
   return (
     <section className="docs-section docs-export-validator" aria-labelledby="export-validator-title">
@@ -66,7 +71,8 @@ export function ExportValidator() {
         <p>
           Abra uma exportação <code>constellation-audit</code> para conferir versão,
           privacidade e contrato. O conteúdo é processado somente neste navegador:
-          nenhum arquivo é enviado e nenhuma consulta ao GitHub acontece.
+          nenhum arquivo é enviado e nenhuma consulta ao GitHub acontece. Depois da
+          validação, você pode reconstruir Markdown, HTML e JSON normalizado localmente.
         </p>
         <p className="docs-export-privacy" id="export-validator-note">
           <strong>Limite de 512 KB.</strong> Formatos atuais e arquivos legados v1 são aceitos;
@@ -118,6 +124,28 @@ export function ExportValidator() {
               <div><dt>Exportado</dt><dd>{dateFormatter.format(new Date(valid.parsed.data.exportedAt))}</dd></div>
               <div><dt>Privacidade</dt><dd>somente dados públicos · sem histórico local</dd></div>
             </dl>
+            <p className="docs-export-artifact-note">
+              Reconstrua relatórios deste retrato validado sem reenviar dados ou repetir
+              a consulta. Arquivos legados viram JSON v2 ao serem baixados.
+            </p>
+            <div
+              className="docs-export-artifacts"
+              aria-label="Downloads reconstruídos localmente"
+            >
+              {artifacts.map((artifact) => (
+                <button
+                  type="button"
+                  key={artifact.format}
+                  onClick={() => downloadTextFile(
+                    artifact.contents,
+                    artifact.mimeType,
+                    artifact.filename,
+                  )}
+                >
+                  {artifact.label}
+                </button>
+              ))}
+            </div>
             {officialShareUrl ? (
               <a href={valid.parsed.data.shareUrl} target="_blank" rel="noreferrer">
                 Abrir rota oficial compartilhada <span aria-hidden="true">↗</span>
