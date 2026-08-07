@@ -489,6 +489,20 @@ footer {
   gap: 8px;
 }
 
+.profile-share-status {
+  max-width: 520px;
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.profile-share-status.is-unavailable {
+  color: var(--signal-dark);
+}
+
 .refresh-warning {
   display: flex;
   align-items: baseline;
@@ -539,7 +553,7 @@ footer {
 }
 
 .refresh-button:hover:not(:disabled),
-.share-button:hover,
+.share-button:hover:not(:disabled),
 .report-button:hover:not(:disabled),
 .html-report-button:hover:not(:disabled),
 .data-button:hover:not(:disabled) {
@@ -548,6 +562,7 @@ footer {
 }
 
 .refresh-button:disabled,
+.share-button:disabled,
 .report-button:disabled,
 .html-report-button:disabled,
 .data-button:disabled {
@@ -2555,6 +2570,10 @@ footer {
 
   .profile-actions {
     justify-content: flex-start;
+  }
+
+  .profile-share-status {
+    text-align: left;
   }
 
   .metric-grid {
