@@ -9,7 +9,10 @@ import {
   AUDIT_HISTORY_RECORDING_STORAGE_KEY,
   parseAuditHistoryRecordingPreference,
 } from "../lib/audit-history-preference.ts";
-import { clearStoredAuditHistory } from "../lib/audit-history-storage.ts";
+import {
+  clearStoredAuditHistory,
+  readStoredRecentAuditProfiles,
+} from "../lib/audit-history-storage.ts";
 
 function snapshot(login, capturedAt) {
   return {
@@ -49,6 +52,24 @@ const history = {
   octocat: [snapshot("octocat", "2026-08-01T12:00:00.000Z")],
   hubot: [snapshot("hubot", "2026-08-02T12:00:00.000Z")],
 };
+
+test("reads recent profiles without changing private storage", () => {
+  const storage = memoryStorage([
+    [AUDIT_HISTORY_STORAGE_KEY, serializeAuditHistory(history)],
+  ]);
+
+  const profiles = readStoredRecentAuditProfiles(storage);
+
+  assert.deepEqual(profiles.map(({ login }) => login), ["hubot", "octocat"]);
+  assert.deepEqual(storage.operations, []);
+});
+
+test("treats malformed stored history as an empty recent list", () => {
+  const storage = memoryStorage([[AUDIT_HISTORY_STORAGE_KEY, "not-json"]]);
+
+  assert.deepEqual(readStoredRecentAuditProfiles(storage), []);
+  assert.deepEqual(storage.operations, []);
+});
 
 test("clears one stored profile without changing the recording preference", () => {
   const storage = memoryStorage([
