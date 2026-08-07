@@ -427,6 +427,9 @@ test("returns official context for a visible historical achievement", async (con
       return new Response(`
         <a href="/octocat?achievement=mars-2020-contributor&amp;tab=achievements">
           <img alt="Achievement: Mars 2020 Contributor">
+        </a>
+        <a href="/hubot?achievement=pull-shark&amp;tab=achievements">
+          <img alt="Achievement: Pull Shark">
         </a>`);
     }
 

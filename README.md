@@ -94,6 +94,9 @@ Como o GitHub permite ocultar todas as conquistas ou somente um selo, a ausênci
 de um badge público nunca é tratada como contador zero. Nesses casos, cartões e
 comparações mostram progresso não público, e a próxima missão considera apenas
 sinais medidos ou mínimos efetivamente confirmados.
+O leitor aceita links de selo mesmo quando o GitHub muda a ordem dos parâmetros,
+mas valida origem, perfil, aba e identificador antes de registrar a conquista;
+links parecidos fora do perfil auditado são ignorados.
 
 O perfil público é a única fonte obrigatória. Se a busca de pull requests, a
 lista de repositórios ou a leitura dos selos falhar temporariamente, a auditoria
