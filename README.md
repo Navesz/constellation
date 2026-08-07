@@ -118,8 +118,10 @@ Respostas `429` usam ainda o cabeçalho HTTP `Retry-After`, além do
 campo estruturado `retryAt` no corpo.
 Todas as respostas preservam esses contratos enquanto aplicam proteção uniforme
 contra MIME sniffing, referrer excessivo, objetos incorporados e permissões de
-câmera, localização e microfone. A metadata social aceita somente a origem
-oficial ou loopback explícito, sem refletir hosts encaminhados desconhecidos.
+sensores, câmera, captura de tela, localização, microfone, pagamentos, USB e
+realidade estendida. O compartilhamento nativo continua permitido somente para
+a própria origem. A metadata social aceita somente a origem oficial ou loopback
+explícito, sem refletir hosts encaminhados desconhecidos.
 
 Como o GitHub permite ocultar todas as conquistas ou somente um selo, a ausência
 de um badge público nunca é tratada como contador zero. Nesses casos, cartões e

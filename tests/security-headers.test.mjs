@@ -1,9 +1,32 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  DISABLED_BROWSER_CAPABILITIES,
+  SECURITY_PERMISSIONS_POLICY,
   SECURITY_RESPONSE_HEADERS,
   withSecurityHeaders,
 } from "../lib/security-headers.ts";
+
+test("denies unused browser capabilities while preserving same-origin sharing", () => {
+  assert.deepEqual(DISABLED_BROWSER_CAPABILITIES, [
+    "accelerometer",
+    "camera",
+    "display-capture",
+    "geolocation",
+    "gyroscope",
+    "magnetometer",
+    "microphone",
+    "payment",
+    "usb",
+    "xr-spatial-tracking",
+  ]);
+  assert.equal(new Set(DISABLED_BROWSER_CAPABILITIES).size, DISABLED_BROWSER_CAPABILITIES.length);
+
+  for (const capability of DISABLED_BROWSER_CAPABILITIES) {
+    assert.match(SECURITY_PERMISSIONS_POLICY, new RegExp(`(?:^|, )${capability}=\\(\\)(?:,|$)`));
+  }
+  assert.match(SECURITY_PERMISSIONS_POLICY, /(?:^|, )web-share=\(self\)$/);
+});
 
 test("adds baseline browser protections without losing response metadata or body", async () => {
   const secured = withSecurityHeaders(new Response("constellation", {
