@@ -102,6 +102,9 @@ disponibilidade do serviço externo.
 As rotas públicas aceitam `GET` entre origens com CORS explícito e respondem a
 preflight `OPTIONS`; `Link`, `Retry-After` e a versão do esquema ficam expostos
 ao navegador junto com `ETag`, e `If-None-Match` é aceito explicitamente.
+Cada resposta da API recebe ainda `X-Constellation-Request-Id`, um UUID v4
+aleatório exposto por CORS. O valor não incorpora login, parâmetros ou dados do
+perfil e pode ser preservado nos logs da integração como referência operacional.
 Respostas `429` usam ainda o cabeçalho HTTP `Retry-After`, além do
 campo estruturado `retryAt` no corpo.
 Todas as respostas preservam esses contratos enquanto aplicam proteção uniforme

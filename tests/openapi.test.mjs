@@ -19,6 +19,7 @@ import {
   STATUS_PATH,
   openApiDocument,
 } from "../lib/openapi.ts";
+import { PUBLIC_API_REQUEST_ID_HEADER } from "../lib/public-api.ts";
 
 test("publishes a discoverable OpenAPI 3.1.1 entry document", () => {
   assert.equal(openApiDocument.openapi, "3.1.1");
@@ -109,4 +110,25 @@ test("describes every public GET route and the versioned audit payload", () => {
     openApiDocument.components.schemas.ServiceStatus.properties.dependencies.properties.github.const,
     "not-checked",
   );
+});
+
+test("documents the opaque request ID on every API response", () => {
+  assert.equal(
+    openApiDocument.components.headers.RequestId.schema.format,
+    "uuid",
+  );
+
+  for (const pathItem of Object.values(openApiDocument.paths)) {
+    for (const operation of Object.values(pathItem)) {
+      for (const response of Object.values(operation.responses)) {
+        const resolved = "$ref" in response
+          ? openApiDocument.components.responses[response.$ref.split("/").at(-1)]
+          : response;
+        assert.deepEqual(
+          resolved.headers?.[PUBLIC_API_REQUEST_ID_HEADER],
+          { $ref: "#/components/headers/RequestId" },
+        );
+      }
+    }
+  }
 });

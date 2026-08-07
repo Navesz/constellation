@@ -24,10 +24,15 @@ const curlExample = `curl --get \\
 const browserExample = `const response = await fetch(
   "/api/audit?login=octocat"
 );
+const requestId = response.headers.get(
+  "X-Constellation-Request-Id"
+);
 
 if (!response.ok) {
   const problem = await response.json();
-  throw new Error(problem.error);
+  throw new Error(
+    problem.error + " [" + (requestId ?? "sem referência") + "]"
+  );
 }
 
 const schemaVersion = response.headers.get(
@@ -148,6 +153,11 @@ export default function ApiDocsPage() {
               OpenAPI e os schemas também retornam <code>ETag</code>. Reenvie esse valor em
               <code> If-None-Match</code> para receber <code>304</code> sem corpo quando o contrato
               não mudou; cache, CORS, descoberta e versão continuam disponíveis na resposta.
+            </p>
+            <p>
+              Cada resposta da API inclui <code>X-Constellation-Request-Id</code>, um UUID aleatório
+              que não codifica login nem dados do perfil. Registre-o junto do status nos logs da
+              integração para manter uma referência segura quando uma leitura falhar.
             </p>
             <div className="docs-contract-links">
               <a href={OPENAPI_PATH}>Abrir OpenAPI <span aria-hidden="true">↗</span></a>
