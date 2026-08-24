@@ -87,6 +87,9 @@ uma origem externa legítima, como um ambiente local, fica identificada sem vira
 um link confiável por acidente.
 
 A rota `GET /api/audit?login=octocat` expõe o mesmo retrato para integrações.
+Cada perfil carregado também oferece um link direto para esse JSON canônico em
+uma nova aba, sem reutilizar a chave temporária de atualização nem incluir o
+histórico privado do navegador.
 Respostas bem-sucedidas carregam `schemaVersion: 2` no corpo e o cabeçalho
 `X-Constellation-Schema-Version: 2`. A versão 2 distingue conquistas ativas,
 históricas e ainda desconhecidas, além de publicar uma fonte oficial quando

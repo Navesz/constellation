@@ -1694,6 +1694,14 @@ function Observatory() {
                 >
                   {comparisonLoading ? "Preparando comparação" : "Baixar dados .json"}
                 </button>
+                <a
+                  className="api-data-link"
+                  href={buildAuditRequestUrl(audit.profile.login)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Abrir JSON da API <span aria-hidden="true">↗</span>
+                </a>
               </div>
               {activeShareState !== "idle" && activeShareState !== "sharing" ? (
                 <p className={`profile-share-status is-${activeShareState}`} role="status" aria-live="polite">

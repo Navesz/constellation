@@ -557,7 +557,8 @@ footer {
 .share-button,
 .report-button,
 .html-report-button,
-.data-button {
+.data-button,
+.api-data-link {
   min-height: 34px;
   border: 1px solid var(--ink);
   padding: 0 12px;
@@ -571,9 +572,17 @@ footer {
   transition: background 160ms ease, color 160ms ease;
 }
 
+.api-data-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-decoration: none;
+}
+
 .report-button,
 .html-report-button,
-.data-button {
+.data-button,
+.api-data-link {
   border-color: var(--line-strong);
 }
 
@@ -585,7 +594,9 @@ footer {
 .share-button:hover:not(:disabled),
 .report-button:hover:not(:disabled),
 .html-report-button:hover:not(:disabled),
-.data-button:hover:not(:disabled) {
+.data-button:hover:not(:disabled),
+.api-data-link:hover,
+.api-data-link:focus-visible {
   color: var(--paper-bright);
   background: var(--ink);
 }
