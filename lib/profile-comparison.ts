@@ -6,6 +6,7 @@ export type ComparisonMetricId =
   | "mergedPullRequests"
   | "topRepositoryStars"
   | "followers"
+  | "following"
   | "publicRepositories";
 
 export type ComparisonMetric = {
@@ -45,6 +46,7 @@ export type ProfileComparison = {
 type ComparableAudit = {
   profile: {
     followers: number;
+    following: number;
     publicRepos: number;
   };
   metrics: {
@@ -250,6 +252,12 @@ export function compareProfiles(primary: ComparableAudit, secondary: ComparableA
         "seguidores",
         primary.profile.followers,
         secondary.profile.followers,
+      ),
+      metric(
+        "following",
+        "seguindo",
+        primary.profile.following,
+        secondary.profile.following,
       ),
       metric(
         "publicRepositories",

@@ -1644,6 +1644,7 @@ function Observatory() {
             <div className="profile-side">
               <div className="profile-meta">
                 <span><strong>{compactNumber(audit.profile.followers)}</strong> seguidores</span>
+                <span><strong>{compactNumber(audit.profile.following)}</strong> seguindo</span>
                 <span><strong>{compactNumber(audit.profile.publicRepos)}</strong> repositórios</span>
               </div>
               <div className="profile-actions">

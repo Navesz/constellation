@@ -359,6 +359,7 @@ footer {
 
 .profile-meta {
   display: flex;
+  flex-wrap: wrap;
   gap: 24px;
   font-family: var(--mono);
   font-size: 0.7rem;
