@@ -119,7 +119,9 @@ campo estruturado `retryAt` no corpo.
 Todas as respostas preservam esses contratos enquanto aplicam proteção uniforme
 contra MIME sniffing, referrer excessivo, objetos incorporados e permissões de
 sensores, câmera, captura de tela, localização, microfone, pagamentos, USB e
-realidade estendida. O compartilhamento nativo continua permitido somente para
+realidade estendida. A política de conteúdo e o cabeçalho de compatibilidade
+também impedem que o observatório seja enquadrado por outra página, reduzindo o
+risco de clickjacking. O compartilhamento nativo continua permitido somente para
 a própria origem. A metadata social aceita somente a origem oficial ou loopback
 explícito, sem refletir hosts encaminhados desconhecidos.
 

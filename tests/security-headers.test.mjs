@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   DISABLED_BROWSER_CAPABILITIES,
+  SECURITY_CONTENT_POLICY,
   SECURITY_PERMISSIONS_POLICY,
   SECURITY_RESPONSE_HEADERS,
   withSecurityHeaders,
@@ -26,6 +27,11 @@ test("denies unused browser capabilities while preserving same-origin sharing", 
     assert.match(SECURITY_PERMISSIONS_POLICY, new RegExp(`(?:^|, )${capability}=\\(\\)(?:,|$)`));
   }
   assert.match(SECURITY_PERMISSIONS_POLICY, /(?:^|, )web-share=\(self\)$/);
+});
+
+test("prevents the application from being framed by another document", () => {
+  assert.match(SECURITY_CONTENT_POLICY, /(?:^|; )frame-ancestors 'none'(?:;|$)/);
+  assert.equal(SECURITY_RESPONSE_HEADERS["X-Frame-Options"], "DENY");
 });
 
 test("adds baseline browser protections without losing response metadata or body", async () => {

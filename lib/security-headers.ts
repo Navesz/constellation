@@ -16,11 +16,19 @@ export const SECURITY_PERMISSIONS_POLICY = [
   "web-share=(self)",
 ].join(", ");
 
+export const SECURITY_CONTENT_POLICY = [
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  "object-src 'none'",
+].join("; ");
+
 export const SECURITY_RESPONSE_HEADERS = {
-  "Content-Security-Policy": "base-uri 'self'; form-action 'self'; object-src 'none'",
+  "Content-Security-Policy": SECURITY_CONTENT_POLICY,
   "Permissions-Policy": SECURITY_PERMISSIONS_POLICY,
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
   "X-Permitted-Cross-Domain-Policies": "none",
 } as const;
 

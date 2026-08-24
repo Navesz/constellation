@@ -44,6 +44,7 @@ test("server-renders the finished Constellation experience", async () => {
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(response.headers.get("x-frame-options"), "DENY");
   assert.equal(response.headers.get("referrer-policy"), "strict-origin-when-cross-origin");
   assert.equal(
     response.headers.get("permissions-policy"),
@@ -52,7 +53,7 @@ test("server-renders the finished Constellation experience", async () => {
   assert.equal(response.headers.get("x-constellation-request-id"), null);
   assert.equal(
     response.headers.get("content-security-policy"),
-    "base-uri 'self'; form-action 'self'; object-src 'none'",
+    "base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'",
   );
 
   const html = await response.text();
