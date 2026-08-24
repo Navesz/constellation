@@ -16,11 +16,12 @@ import {
 
 function snapshot(login, capturedAt) {
   return {
-    version: 2,
+    version: 3,
     login,
     capturedAt,
     complete: true,
     followers: 10,
+    following: 6,
     visibleAchievementCount: 2,
     mergedPullRequests: 3,
     topRepositoryStars: 4,

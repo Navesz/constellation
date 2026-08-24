@@ -8,11 +8,12 @@ import {
 } from "../lib/audit-history-preference.ts";
 
 const completeSnapshot = {
-  version: 2,
+  version: 3,
   login: "octocat",
   capturedAt: "2026-07-31T12:00:00.000Z",
   complete: true,
   followers: 10,
+  following: 6,
   visibleAchievementCount: 2,
   mergedPullRequests: 3,
   topRepositoryStars: 4,
