@@ -32,3 +32,19 @@ test("preserves essential visual states in forced-colors mode", () => {
   assert.match(forcedColors, /\.progress\.is-indeterminate\s*\{[\s\S]*border-style:\s*dashed/);
   assert.match(forcedColors, /li\.is-unavailable \.evidence-status i\s*\{[\s\S]*border-style:\s*dashed/);
 });
+
+test("honors an explicit request for more contrast", () => {
+  const start = css.indexOf("@media (prefers-contrast: more)");
+  const end = css.indexOf("@media (forced-colors: active)", start);
+
+  assert.ok(start >= 0);
+  assert.ok(end > start);
+  assert.equal(css.includes("@media (prefers-contrast)"), false);
+  const increasedContrast = css.slice(start, end);
+
+  assert.match(increasedContrast, /--muted:\s*#3d4541/);
+  assert.match(increasedContrast, /--line:\s*rgba\(16, 24, 32, 0\.62\)/);
+  assert.match(increasedContrast, /outline-width:\s*4px/);
+  assert.match(increasedContrast, /\.progress\s*\{[\s\S]*border:\s*2px solid var\(--ink\)/);
+  assert.match(increasedContrast, /li\.is-unavailable \.evidence-status i\s*\{[\s\S]*border:\s*2px dashed currentColor/);
+});

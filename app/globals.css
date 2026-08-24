@@ -2650,6 +2650,42 @@ footer {
   }
 }
 
+@media (prefers-contrast: more) {
+  :root {
+    --ink-soft: #18232c;
+    --line: rgba(16, 24, 32, 0.62);
+    --line-strong: #101820;
+    --muted: #3d4541;
+    --signal-dark: #9d2a10;
+    --acid-dark: #43500f;
+  }
+
+  .ambient {
+    display: none;
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  a:focus-visible,
+  #main-content:focus,
+  .audit-focus-target:focus {
+    outline-width: 4px;
+  }
+
+  .progress {
+    height: 8px;
+    border: 2px solid var(--ink);
+  }
+
+  .progress.is-indeterminate {
+    border-style: dashed;
+  }
+
+  .evidence-ledger > ol > li.is-unavailable .evidence-status i {
+    border: 2px dashed currentColor;
+  }
+}
+
 @media (forced-colors: active) {
   .ambient {
     display: none;

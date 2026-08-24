@@ -26,8 +26,9 @@ O formulário de comparação segue o mesmo comportamento: depois do envio, o fo
 chega ao resultado lado a lado ou à falha do segundo perfil, enquanto URLs abertas
 diretamente continuam sem deslocamento automático.
 Preferências do sistema também são respeitadas: movimento reduzido desativa as
-animações contínuas, enquanto cores forçadas preservam contornos de foco,
-seleções, barras de progresso e diferenças entre fontes disponíveis e indisponíveis.
+animações contínuas; a preferência por mais contraste reforça textos secundários,
+divisórias, contornos de foco, barras de progresso e estados indisponíveis; e cores
+forçadas preservam esses sinais com a paleta escolhida no sistema.
 
 O catálogo de critérios foi revisto em 31 de julho de 2026. O próprio GitHub
 mantém Achievements em prévia pública e não oferece uma API oficial nem um
