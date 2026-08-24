@@ -205,7 +205,7 @@ recalcula o sentido dos deltas e atualiza a URL; as leituras já carregadas muda
 de posição imediatamente enquanto a aplicação confirma novamente os dados públicos.
 Seguidores, perfis seguidos e repositórios públicos aparecem lado a lado como
 contagens neutras; nenhum deles é interpretado isoladamente como qualidade ou vitória.
-A comparação também pode ser baixada como CSV, com as cinco métricas públicas,
+A comparação também pode ser baixada como CSV, com as seis métricas públicas,
 os deltas e o estado de cada conquista para os dois perfis. Sinais indisponíveis
 permanecem vazios no arquivo em vez de serem convertidos em zero, e textos são
 neutralizados antes de chegar a uma planilha para não serem interpretados como fórmulas.
