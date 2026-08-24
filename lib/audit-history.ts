@@ -7,11 +7,12 @@ export const MAX_SNAPSHOTS_PER_PROFILE = 12;
 export const MAX_TRACKED_PROFILES = 8;
 
 export type AuditSnapshot = {
-  version: 2;
+  version: 3;
   login: string;
   capturedAt: string;
   complete: boolean;
   followers: number | null;
+  following: number | null;
   visibleAchievementCount: number | null;
   mergedPullRequests: number | null;
   topRepositoryStars: number | null;
@@ -23,7 +24,7 @@ export type AuditHistory = Record<string, AuditSnapshot[]>;
 
 export type AuditHistoryBackup = {
   format: typeof AUDIT_HISTORY_BACKUP_FORMAT;
-  version: 2;
+  version: 3;
   exportedAt: string;
   history: AuditHistory;
 };
@@ -33,6 +34,7 @@ export type RecentAuditProfile = {
   lastObservedAt: string;
   observationCount: number;
   followers: number | null;
+  following: number | null;
   visibleAchievementCount: number | null;
   mergedPullRequests: number | null;
   topRepositoryStars: number | null;
@@ -41,6 +43,7 @@ export type RecentAuditProfile = {
 
 export type AuditChanges = {
   followers: number | null;
+  following: number | null;
   visibleAchievements: number | null;
   mergedPullRequests: number | null;
   topRepositoryStars: number | null;
@@ -57,6 +60,7 @@ type SnapshotInput = {
   profile: {
     login: string;
     followers: number;
+    following: number;
     publicRepos: number;
   };
   metrics: {
@@ -87,15 +91,19 @@ function normalizeSnapshot(value: unknown): AuditSnapshot | null {
   const followers = snapshot.version === 1 && snapshot.followers === undefined
     ? null
     : snapshot.followers;
+  const following = (snapshot.version === 1 || snapshot.version === 2) && snapshot.following === undefined
+    ? null
+    : snapshot.following;
 
   if (
-    (snapshot.version !== 1 && snapshot.version !== 2) ||
+    (snapshot.version !== 1 && snapshot.version !== 2 && snapshot.version !== 3) ||
     typeof snapshot.login !== "string" ||
     !GITHUB_LOGIN_PATTERN.test(snapshot.login) ||
     typeof snapshot.capturedAt !== "string" ||
     !Number.isFinite(Date.parse(snapshot.capturedAt)) ||
     typeof snapshot.complete !== "boolean" ||
     !nullableCount(followers) ||
+    !nullableCount(following) ||
     !nullableCount(snapshot.visibleAchievementCount) ||
     !nullableCount(snapshot.mergedPullRequests) ||
     !nullableCount(snapshot.topRepositoryStars) ||
@@ -112,11 +120,12 @@ function normalizeSnapshot(value: unknown): AuditSnapshot | null {
   }
 
   return {
-    version: 2,
+    version: 3,
     login: snapshot.login,
     capturedAt: snapshot.capturedAt,
     complete: snapshot.complete,
     followers,
+    following,
     visibleAchievementCount: snapshot.visibleAchievementCount,
     mergedPullRequests: snapshot.mergedPullRequests,
     topRepositoryStars: snapshot.topRepositoryStars,
@@ -176,6 +185,7 @@ function sameSignals(left: AuditSnapshot, right: AuditSnapshot) {
   return (
     left.complete === right.complete &&
     left.followers === right.followers &&
+    left.following === right.following &&
     left.visibleAchievementCount === right.visibleAchievementCount &&
     left.mergedPullRequests === right.mergedPullRequests &&
     left.topRepositoryStars === right.topRepositoryStars &&
@@ -188,11 +198,12 @@ export function createAuditSnapshot(audit: SnapshotInput): AuditSnapshot {
   const complete = Object.values(audit.sources).every((source) => source === "available");
 
   return {
-    version: 2,
+    version: 3,
     login: audit.profile.login,
     capturedAt: audit.generatedAt,
     complete,
     followers: audit.profile.followers,
+    following: audit.profile.following,
     visibleAchievementCount: audit.visibleAchievementCount,
     mergedPullRequests: audit.metrics.mergedPullRequests,
     topRepositoryStars:
@@ -262,6 +273,7 @@ export function listRecentAuditProfiles(history: AuditHistory): RecentAuditProfi
         lastObservedAt: latest.capturedAt,
         observationCount: completeSnapshots.length,
         followers: latest.followers,
+        following: latest.following,
         visibleAchievementCount: latest.visibleAchievementCount,
         mergedPullRequests: latest.mergedPullRequests,
         topRepositoryStars: latest.topRepositoryStars,
@@ -296,12 +308,14 @@ export function serializeAuditTimelineCsv(timeline: AuditTimelineEntry[]) {
     "captured_at",
     "login",
     "followers",
+    "following",
     "visible_achievements",
     "merged_pull_requests",
     "top_repository_stars",
     "public_repositories",
     "unlocked_achievements",
     "followers_change",
+    "following_change",
     "visible_achievements_change",
     "merged_pull_requests_change",
     "top_repository_stars_change",
@@ -315,12 +329,14 @@ export function serializeAuditTimelineCsv(timeline: AuditTimelineEntry[]) {
     snapshot.capturedAt,
     snapshot.login,
     snapshot.followers,
+    snapshot.following,
     snapshot.visibleAchievementCount,
     snapshot.mergedPullRequests,
     snapshot.topRepositoryStars,
     snapshot.publicRepositories,
     snapshot.unlockedAchievementSlugs?.join("|") ?? "",
     changes?.followers ?? null,
+    changes?.following ?? null,
     changes?.visibleAchievements ?? null,
     changes?.mergedPullRequests ?? null,
     changes?.topRepositoryStars ?? null,
@@ -336,7 +352,7 @@ export function serializeAuditTimelineCsv(timeline: AuditTimelineEntry[]) {
 export function serializeAuditHistoryBackup(history: AuditHistory, exportedAt = new Date().toISOString()) {
   const backup: AuditHistoryBackup = {
     format: AUDIT_HISTORY_BACKUP_FORMAT,
-    version: 2,
+    version: 3,
     exportedAt,
     history: mergeAuditHistories({}, history),
   };
@@ -352,7 +368,7 @@ export function parseAuditHistoryBackup(serialized: string): AuditHistoryBackup 
       !parsed ||
       typeof parsed !== "object" ||
       parsed.format !== AUDIT_HISTORY_BACKUP_FORMAT ||
-      (parsed.version !== 1 && parsed.version !== 2) ||
+      (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== 3) ||
       typeof parsed.exportedAt !== "string" ||
       !Number.isFinite(Date.parse(parsed.exportedAt)) ||
       !history
@@ -362,7 +378,7 @@ export function parseAuditHistoryBackup(serialized: string): AuditHistoryBackup 
 
     return {
       format: AUDIT_HISTORY_BACKUP_FORMAT,
-      version: 2,
+      version: 3,
       exportedAt: parsed.exportedAt,
       history,
     };
@@ -434,6 +450,7 @@ export function compareAuditSnapshots(current: AuditSnapshot, previous: AuditSna
 
   return {
     followers: delta(current.followers, previous.followers),
+    following: delta(current.following, previous.following),
     visibleAchievements: delta(current.visibleAchievementCount, previous.visibleAchievementCount),
     mergedPullRequests: delta(current.mergedPullRequests, previous.mergedPullRequests),
     topRepositoryStars: delta(current.topRepositoryStars, previous.topRepositoryStars),

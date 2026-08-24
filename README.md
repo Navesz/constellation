@@ -168,8 +168,10 @@ Novas gravações podem ser pausadas e retomadas com uma preferência persistida
 somente no dispositivo; pausar preserva tudo que já foi salvo, enquanto retomar
 registra imediatamente a leitura atual quando ela estiver completa.
 Leituras parciais nunca substituem uma linha de base completa. A linha do tempo
-mostra todas as observações distintas, seus cinco sinais — seguidores, selos,
-PRs, estrelas e repositórios — e a mudança desde o estado anterior.
+mostra todas as observações distintas, seus seis sinais — seguidores, perfis
+seguidos, selos, PRs, estrelas e repositórios — e a mudança desde o estado
+anterior. Leituras antigas são migradas sem inventar a contagem de perfis
+seguidos quando esse campo ainda não era preservado.
 
 Quando existem pelo menos dois perfis nessa memória, o painel mostra órbitas
 recentes ordenadas pela última observação, com um resumo dos cinco sinais e

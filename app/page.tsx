@@ -134,6 +134,7 @@ function timelineChangeSummary(changes: AuditChanges | null) {
 
   const signals = [
     { value: changes.followers, label: "seguidores" },
+    { value: changes.following, label: "seguindo" },
     { value: changes.visibleAchievements, label: "selos" },
     { value: changes.mergedPullRequests, label: "PRs" },
     { value: changes.topRepositoryStars, label: "estrelas" },
@@ -195,6 +196,7 @@ function RecentOrbits({
                 </span>
                 <span className="recent-orbit-signals" aria-label={`Últimos sinais de ${profile.login}`}>
                   <span><strong>{timelineMetric(profile.followers)}</strong> seguidores</span>
+                  <span><strong>{timelineMetric(profile.following)}</strong> seguindo</span>
                   <span><strong>{timelineMetric(profile.visibleAchievementCount)}</strong> selos</span>
                   <span><strong>{timelineMetric(profile.mergedPullRequests)}</strong> PRs</span>
                   <span><strong>{timelineMetric(profile.topRepositoryStars)}</strong> estrelas</span>
@@ -465,6 +467,7 @@ function ProgressHistory({
   const changedSignals = memory.changes
     ? [
         { value: memory.changes.followers, label: "seguidores" },
+        { value: memory.changes.following, label: "seguindo" },
         { value: memory.changes.visibleAchievements, label: "conquistas visíveis" },
         { value: memory.changes.mergedPullRequests, label: "PRs mesclados" },
         { value: memory.changes.topRepositoryStars, label: "estrelas no melhor projeto" },
@@ -596,6 +599,7 @@ function ProgressHistory({
                 <tr>
                   <th scope="col">Observação</th>
                   <th scope="col">Seguidores</th>
+                  <th scope="col">Seguindo</th>
                   <th scope="col">Selos</th>
                   <th scope="col">PRs</th>
                   <th scope="col">Estrelas</th>
@@ -613,6 +617,7 @@ function ProgressHistory({
                       {index === 0 ? <small>mais recente</small> : null}
                     </th>
                     <td>{timelineMetric(entry.snapshot.followers)}</td>
+                    <td>{timelineMetric(entry.snapshot.following)}</td>
                     <td>{timelineMetric(entry.snapshot.visibleAchievementCount)}</td>
                     <td>{timelineMetric(entry.snapshot.mergedPullRequests)}</td>
                     <td>{timelineMetric(entry.snapshot.topRepositoryStars)}</td>

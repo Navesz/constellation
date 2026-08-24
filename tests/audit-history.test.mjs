@@ -23,7 +23,7 @@ import {
 
 function audit(overrides = {}) {
   return {
-    profile: { login: "octocat", followers: 18_400, publicRepos: 8 },
+    profile: { login: "octocat", followers: 18_400, following: 12, publicRepos: 8 },
     metrics: {
       mergedPullRequests: 12,
       topRepository: { stars: 7 },
@@ -46,11 +46,12 @@ function audit(overrides = {}) {
 
 test("creates a complete, minimal snapshot from an audit", () => {
   assert.deepEqual(createAuditSnapshot(audit()), {
-    version: 2,
+    version: 3,
     login: "octocat",
     capturedAt: "2026-07-31T00:00:00.000Z",
     complete: true,
     followers: 18_400,
+    following: 12,
     visibleAchievementCount: 2,
     mergedPullRequests: 12,
     topRepositoryStars: 7,
@@ -95,6 +96,7 @@ test("compares changes against the last different state", () => {
   assert.equal(comparison?.capturedAt, baseline.capturedAt);
   assert.deepEqual(compareAuditSnapshots(current, comparison), {
     followers: 0,
+    following: 0,
     visibleAchievements: 1,
     mergedPullRequests: 3,
     topRepositoryStars: 1,
@@ -116,7 +118,7 @@ test("builds a newest-first timeline from complete snapshots in chronological or
     generatedAt: "2026-08-01T00:00:00.000Z",
   }));
   const latest = createAuditSnapshot(audit({
-    profile: { login: "octocat", followers: 18_410, publicRepos: 9 },
+    profile: { login: "octocat", followers: 18_410, following: 14, publicRepos: 9 },
     metrics: {
       mergedPullRequests: 17,
       topRepository: { stars: 8 },
@@ -150,6 +152,7 @@ test("builds a newest-first timeline from complete snapshots in chronological or
   );
   assert.deepEqual(timeline[0].changes, {
     followers: 10,
+    following: 2,
     visibleAchievements: 1,
     mergedPullRequests: 2,
     topRepositoryStars: 0,
@@ -158,6 +161,7 @@ test("builds a newest-first timeline from complete snapshots in chronological or
   });
   assert.deepEqual(timeline[1].changes, {
     followers: 0,
+    following: 0,
     visibleAchievements: 0,
     mergedPullRequests: 3,
     topRepositoryStars: 1,
@@ -170,7 +174,7 @@ test("builds a newest-first timeline from complete snapshots in chronological or
 test("exports a chronological spreadsheet timeline with values and deltas", () => {
   const baseline = createAuditSnapshot(audit());
   const latest = createAuditSnapshot(audit({
-    profile: { login: "octocat", followers: 18_410, publicRepos: 9 },
+    profile: { login: "octocat", followers: 18_410, following: 14, publicRepos: 9 },
     metrics: { mergedPullRequests: 15, topRepository: { stars: 8 } },
     visibleAchievementCount: 3,
     achievements: [
@@ -184,19 +188,19 @@ test("exports a chronological spreadsheet timeline with values and deltas", () =
   const csv = serializeAuditTimelineCsv(timeline);
   const lines = csv.slice(1).trimEnd().split("\r\n");
 
-  assert.equal(csv.startsWith("\uFEFFcaptured_at,login,followers"), true);
+  assert.equal(csv.startsWith("\uFEFFcaptured_at,login,followers,following"), true);
   assert.equal(lines.length, 3);
   assert.equal(
     lines[0],
-    "captured_at,login,followers,visible_achievements,merged_pull_requests,top_repository_stars,public_repositories,unlocked_achievements,followers_change,visible_achievements_change,merged_pull_requests_change,top_repository_stars_change,public_repositories_change,newly_unlocked_achievements",
+    "captured_at,login,followers,following,visible_achievements,merged_pull_requests,top_repository_stars,public_repositories,unlocked_achievements,followers_change,following_change,visible_achievements_change,merged_pull_requests_change,top_repository_stars_change,public_repositories_change,newly_unlocked_achievements",
   );
   assert.equal(
     lines[1],
-    "2026-07-31T00:00:00.000Z,octocat,18400,2,12,7,8,quickdraw|pull-shark,,,,,,",
+    "2026-07-31T00:00:00.000Z,octocat,18400,12,2,12,7,8,quickdraw|pull-shark,,,,,,,",
   );
   assert.equal(
     lines[2],
-    "2026-08-03T00:00:00.000Z,octocat,18410,3,15,8,9,quickdraw|pull-shark|starstruck,10,1,3,1,1,starstruck",
+    "2026-08-03T00:00:00.000Z,octocat,18410,14,3,15,8,9,quickdraw|pull-shark|starstruck,10,2,1,3,1,1,starstruck",
   );
   assert.equal(
     auditTimelineCsvFilename("OctoCat", "2026-08-04T10:20:30.000Z"),
@@ -244,7 +248,7 @@ test("keeps only the most recently observed profiles", () => {
 
   for (let index = 0; index < MAX_TRACKED_PROFILES + 2; index += 1) {
     history = appendAuditSnapshot(history, createAuditSnapshot(audit({
-      profile: { login: `user-${index}`, followers: index * 10, publicRepos: index },
+      profile: { login: `user-${index}`, followers: index * 10, following: index, publicRepos: index },
       generatedAt: new Date(Date.UTC(2026, 7, index + 1)).toISOString(),
     })));
   }
@@ -273,7 +277,7 @@ test("round-trips a versioned backup with a stable filename", () => {
   const backup = parseAuditHistoryBackup(serialized);
 
   assert.equal(backup?.format, "constellation-audit-history");
-  assert.equal(backup?.version, 2);
+  assert.equal(backup?.version, 3);
   assert.equal(backup?.exportedAt, exportedAt);
   assert.deepEqual(backup?.history, history);
   assert.equal(countAuditHistorySnapshots(backup.history), 1);
@@ -287,7 +291,7 @@ test("rejects malformed, incompatible and internally inconsistent backups", () =
   const valid = JSON.parse(serializeAuditHistoryBackup({ octocat: [snapshot] }));
 
   assert.equal(parseAuditHistoryBackup("not-json"), null);
-  assert.equal(parseAuditHistoryBackup(JSON.stringify({ ...valid, version: 3 })), null);
+  assert.equal(parseAuditHistoryBackup(JSON.stringify({ ...valid, version: 4 })), null);
   assert.equal(parseAuditHistoryBackup(JSON.stringify({
     ...valid,
     history: { hubot: [snapshot] },
@@ -339,14 +343,16 @@ test("merges backups chronologically without duplicating shared observations", (
   assert.equal(countAuditHistorySnapshots(merged), 3);
 });
 
-test("migrates legacy history and version 1 backups without inventing followers", () => {
+test("migrates legacy history and old backups without inventing unavailable profile counts", () => {
   const current = createAuditSnapshot(audit());
   const legacy = { ...current, version: 1 };
   delete legacy.followers;
+  delete legacy.following;
 
   const parsedHistory = parseAuditHistory(JSON.stringify({ octocat: [legacy] }));
-  assert.equal(parsedHistory.octocat[0].version, 2);
+  assert.equal(parsedHistory.octocat[0].version, 3);
   assert.equal(parsedHistory.octocat[0].followers, null);
+  assert.equal(parsedHistory.octocat[0].following, null);
 
   const legacyBackup = JSON.stringify({
     format: "constellation-audit-history",
@@ -355,9 +361,16 @@ test("migrates legacy history and version 1 backups without inventing followers"
     history: { octocat: [legacy] },
   });
   const migratedBackup = parseAuditHistoryBackup(legacyBackup);
-  assert.equal(migratedBackup?.version, 2);
+  assert.equal(migratedBackup?.version, 3);
   assert.equal(migratedBackup?.history.octocat[0].followers, null);
   assert.equal(compareAuditSnapshots(current, migratedBackup.history.octocat[0]).followers, null);
+  assert.equal(compareAuditSnapshots(current, migratedBackup.history.octocat[0]).following, null);
+
+  const version2 = { ...current, version: 2 };
+  delete version2.following;
+  const migratedVersion2 = parseAuditHistory(JSON.stringify({ octocat: [version2] }));
+  assert.equal(migratedVersion2.octocat[0].version, 3);
+  assert.equal(migratedVersion2.octocat[0].following, null);
 });
 
 test("reapplies profile and snapshot retention limits while merging", () => {
@@ -368,7 +381,7 @@ test("reapplies profile and snapshot retention limits while merging", () => {
     imported[login] = [];
     for (let snapshot = 0; snapshot < MAX_SNAPSHOTS_PER_PROFILE + 2; snapshot += 1) {
       imported[login].push(createAuditSnapshot(audit({
-        profile: { login, followers: profile * 10, publicRepos: profile },
+        profile: { login, followers: profile * 10, following: profile, publicRepos: profile },
         metrics: { mergedPullRequests: snapshot, topRepository: { stars: profile } },
         generatedAt: new Date(Date.UTC(2026, 7, profile * 20 + snapshot + 1)).toISOString(),
       })));
@@ -392,13 +405,13 @@ test("lists recent profiles by their latest complete observation", () => {
     generatedAt: "2026-08-04T00:00:00.000Z",
   }));
   const hubotLatest = createAuditSnapshot(audit({
-    profile: { login: "hubot", followers: 200, publicRepos: 14 },
+    profile: { login: "hubot", followers: 200, following: 5, publicRepos: 14 },
     metrics: { mergedPullRequests: 7, topRepository: { stars: 21 } },
     visibleAchievementCount: 1,
     generatedAt: "2026-08-03T00:00:00.000Z",
   }));
   const partialOnly = createAuditSnapshot(audit({
-    profile: { login: "monalisa", followers: 10, publicRepos: 4 },
+    profile: { login: "monalisa", followers: 10, following: 2, publicRepos: 4 },
     sources: {
       achievements: "unavailable",
       mergedPullRequests: "available",
@@ -420,6 +433,7 @@ test("lists recent profiles by their latest complete observation", () => {
     lastObservedAt: octocatLatest.capturedAt,
     observationCount: 2,
     followers: 18_400,
+    following: 12,
     visibleAchievementCount: 3,
     mergedPullRequests: 18,
     topRepositoryStars: 9,
