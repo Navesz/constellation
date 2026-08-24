@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChangeEvent, FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, Suspense, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import {
   AUDIT_HISTORY_STORAGE_KEY,
   MAX_SNAPSHOTS_PER_PROFILE,
@@ -74,6 +74,7 @@ import {
 } from "@/lib/audit-sharing";
 import { downloadTextFile } from "@/lib/browser-download";
 import { githubAchievementDetailUrl, normalizeGitHubLogin } from "@/lib/github-profile";
+import { comparisonFocusTarget } from "@/lib/comparison-focus";
 import {
   buildProfileComparisonPath,
   compareProfiles,
@@ -719,12 +720,14 @@ function ProfileComparisonPanel({
   onRemove,
   onSwap,
   swapDisabled,
+  resultHeadingRef,
 }: {
   primary: AuditResponse;
   secondary: AuditResponse;
   onRemove: () => void;
   onSwap: () => void;
   swapDisabled: boolean;
+  resultHeadingRef: RefObject<HTMLHeadingElement | null>;
 }) {
   const comparison = compareProfiles(primary, secondary);
 
@@ -750,7 +753,14 @@ function ProfileComparisonPanel({
       <div className="comparison-heading">
         <div>
           <p className="kicker"><span /> órbita comparativa</p>
-          <h2 id="comparison-title">{primary.profile.login} × {secondary.profile.login}</h2>
+          <h2
+            className="audit-focus-target"
+            id="comparison-title"
+            ref={resultHeadingRef}
+            tabIndex={-1}
+          >
+            {primary.profile.login} × {secondary.profile.login}
+          </h2>
           <p>Diferenças públicas lado a lado, sem ranking composto ou nota inventada.</p>
         </div>
         <div className="comparison-heading-actions">
@@ -903,6 +913,9 @@ function Observatory() {
   const auditResultHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const auditErrorRef = useRef<HTMLElement | null>(null);
   const pendingAuditFocusLoginRef = useRef<string | null>(null);
+  const comparisonResultHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  const comparisonErrorRef = useRef<HTMLElement | null>(null);
+  const pendingComparisonFocusLoginRef = useRef<string | null>(null);
   const comparisonRefreshToken = auditRefreshTokenForLogin(
     comparisonRefreshRequest,
     comparisonLogin,
@@ -1100,6 +1113,25 @@ function Observatory() {
     pendingAuditFocusLoginRef.current = null;
   }, [auditIsCurrent, errorIsCurrent, loading, routeLogin]);
 
+  useEffect(() => {
+    const focusTarget = comparisonFocusTarget({
+      pendingLogin: pendingComparisonFocusLoginRef.current,
+      comparisonLogin,
+      loading: comparisonLoading,
+      hasResult: Boolean(comparisonAudit),
+      hasError: Boolean(comparisonError),
+    });
+    if (!focusTarget) return;
+
+    const target = focusTarget === "error"
+      ? comparisonErrorRef.current
+      : comparisonResultHeadingRef.current;
+    if (!target) return;
+
+    target.focus();
+    pendingComparisonFocusLoginRef.current = null;
+  }, [comparisonAudit, comparisonError, comparisonLoading, comparisonLogin]);
+
   function requestAuditRefresh() {
     setLoading(true);
     setRefreshError("");
@@ -1158,6 +1190,7 @@ function Observatory() {
     }
 
     setComparisonFormError("");
+    pendingComparisonFocusLoginRef.current = requestedLogin;
     if (comparisonLogin?.toLowerCase() === requestedLogin.toLowerCase()) {
       setComparisonState((current) => current ? { ...current, error: "" } : current);
       setComparisonRefreshing(true);
@@ -1181,6 +1214,7 @@ function Observatory() {
     params.set("login", audit?.profile.login ?? routeLogin);
     params.delete("compare");
     setComparisonFormError("");
+    pendingComparisonFocusLoginRef.current = null;
     setComparisonRefreshing(false);
     setComparisonRefreshRequest(null);
     router.push(`/?${params.toString()}`, { scroll: false });
@@ -1743,8 +1777,14 @@ function Observatory() {
           ) : null}
 
           {comparisonError ? (
-            <section className="comparison-error" role="alert">
-              <strong>Não foi possível comparar agora.</strong>
+            <section
+              className="comparison-error audit-focus-target"
+              role="alert"
+              aria-labelledby="comparison-error-title"
+              ref={comparisonErrorRef}
+              tabIndex={-1}
+            >
+              <strong id="comparison-error-title">Não foi possível comparar agora.</strong>
               <p>{comparisonError}</p>
               <button type="button" onClick={removeComparison}>Remover segundo perfil</button>
             </section>
@@ -1757,6 +1797,7 @@ function Observatory() {
               onRemove={removeComparison}
               onSwap={swapComparison}
               swapDisabled={comparisonLoading}
+              resultHeadingRef={comparisonResultHeadingRef}
             />
           ) : null}
 

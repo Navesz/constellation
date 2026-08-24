@@ -22,6 +22,9 @@ A navegação por teclado oferece um salto direto sobre o menu tanto no observat
 quanto no guia da API. Depois de uma busca enviada pelo formulário principal, o foco chega ao
 nome do perfil carregado ou ao erro correspondente; carregamentos iniciais e
 atualizações acionadas por outros controles não deslocam o foco inesperadamente.
+O formulário de comparação segue o mesmo comportamento: depois do envio, o foco
+chega ao resultado lado a lado ou à falha do segundo perfil, enquanto URLs abertas
+diretamente continuam sem deslocamento automático.
 Preferências do sistema também são respeitadas: movimento reduzido desativa as
 animações contínuas, enquanto cores forçadas preservam contornos de foco,
 seleções, barras de progresso e diferenças entre fontes disponíveis e indisponíveis.
