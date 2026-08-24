@@ -34,6 +34,14 @@ test("prevents the application from being framed by another document", () => {
   assert.equal(SECURITY_RESPONSE_HEADERS["X-Frame-Options"], "DENY");
 });
 
+test("pins future visits to HTTPS without opting an external domain into preload", () => {
+  assert.equal(
+    SECURITY_RESPONSE_HEADERS["Strict-Transport-Security"],
+    "max-age=31536000; includeSubDomains",
+  );
+  assert.doesNotMatch(SECURITY_RESPONSE_HEADERS["Strict-Transport-Security"], /preload/i);
+});
+
 test("adds baseline browser protections without losing response metadata or body", async () => {
   const secured = withSecurityHeaders(new Response("constellation", {
     status: 202,

@@ -127,7 +127,8 @@ campo estruturado `retryAt` no corpo.
 Todas as respostas preservam esses contratos enquanto aplicam proteção uniforme
 contra MIME sniffing, referrer excessivo, objetos incorporados e permissões de
 sensores, câmera, captura de tela, localização, microfone, pagamentos, USB e
-realidade estendida. A política de conteúdo e o cabeçalho de compatibilidade
+realidade estendida. Visitas futuras também ficam fixadas em HTTPS por um ano.
+A política de conteúdo e o cabeçalho de compatibilidade
 também impedem que o observatório seja enquadrado por outra página, reduzindo o
 risco de clickjacking. O compartilhamento nativo continua permitido somente para
 a própria origem. A metadata social aceita somente a origem oficial ou loopback
@@ -174,7 +175,7 @@ anterior. Leituras antigas são migradas sem inventar a contagem de perfis
 seguidos quando esse campo ainda não era preservado.
 
 Quando existem pelo menos dois perfis nessa memória, o painel mostra órbitas
-recentes ordenadas pela última observação, com um resumo dos cinco sinais e
+recentes ordenadas pela última observação, com um resumo dos seis sinais e
 acesso direto para remapear cada login. Esses atalhos são carregados antes da
 consulta atual e continuam disponíveis quando o GitHub ou a API falha; a tela de
 erro também permite tentar novamente sem apagar nem regravar a memória privada.
@@ -188,9 +189,10 @@ A linha do tempo do perfil aberto também pode ser baixada como CSV em ordem
 cronológica, com métricas, mudanças desde a leitura anterior e os selos visíveis.
 O arquivo é local e inclui somente o perfil selecionado, pronto para planilhas.
 
-Backups atuais usam a versão 2 e incluem seguidores. Arquivos da versão 1
-continuam aceitos; como esse sinal não existia neles, o valor antigo permanece
-indisponível até que duas novas leituras permitam calcular uma mudança honesta.
+Backups atuais usam a versão 3 e incluem seguidores e perfis seguidos. Arquivos
+das versões 1 e 2 continuam aceitos; sinais que ainda não existiam em cada
+formato permanecem indisponíveis até que duas novas leituras permitam calcular
+uma mudança honesta.
 
 Um segundo perfil pode ser adicionado para comparação. A URL preserva os dois
 logins, o painel calcula o delta como `segundo - principal` e omite qualquer
