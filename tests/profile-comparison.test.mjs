@@ -25,7 +25,7 @@ function achievement(slug, unlocked, overrides = {}) {
 
 function audit(overrides = {}) {
   return {
-    profile: { followers: 100, publicRepos: 8 },
+    profile: { followers: 100, following: 5, publicRepos: 8 },
     metrics: {
       mergedPullRequests: 12,
       topRepository: { stars: 7 },
@@ -59,7 +59,7 @@ test("compares equivalent public metrics with an explicit secondary-minus-primar
   const comparison = compareProfiles(
     audit(),
     audit({
-      profile: { followers: 130, publicRepos: 10 },
+      profile: { followers: 130, following: 8, publicRepos: 10 },
       metrics: { mergedPullRequests: 9, topRepository: { stars: 11 } },
       visibleAchievementCount: 3,
     }),
@@ -72,6 +72,7 @@ test("compares equivalent public metrics with an explicit secondary-minus-primar
       { id: "mergedPullRequests", difference: -3, leader: "primary" },
       { id: "topRepositoryStars", difference: 4, leader: "secondary" },
       { id: "followers", difference: 30, leader: "secondary" },
+      { id: "following", difference: 3, leader: "secondary" },
       { id: "publicRepositories", difference: 2, leader: "secondary" },
     ],
   );
@@ -80,7 +81,7 @@ test("compares equivalent public metrics with an explicit secondary-minus-primar
 test("reverses delta direction when the primary and secondary profiles are swapped", () => {
   const primary = audit();
   const secondary = audit({
-    profile: { followers: 130, publicRepos: 10 },
+    profile: { followers: 130, following: 8, publicRepos: 10 },
     metrics: { mergedPullRequests: 9, topRepository: { stars: 11 } },
     visibleAchievementCount: 3,
   });

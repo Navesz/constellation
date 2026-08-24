@@ -10,6 +10,7 @@ combina dados da API pública com as conquistas visíveis no perfil para mostrar
 - reconhecimentos históricos Mars 2020 e Arctic Code Vault identificados como eventos encerrados, com fontes oficiais;
 - selos recém-lançados descobertos diretamente no perfil, mesmo quando ainda não fazem parte do catálogo interno;
 - progresso conhecido para o próximo marco;
+- seguidores, perfis seguidos e repositórios públicos;
 - pull requests públicos mesclados;
 - repositório autoral com mais estrelas em todo o perfil, mesmo quando existem mais de 100 projetos;
 - uma próxima ação legítima, sem incentivar spam.
@@ -192,6 +193,8 @@ diferença cuja fonte esteja indisponível. A comparação não cria pontuação
 nem declara um vencedor. O controle “Inverter perfis” troca a referência,
 recalcula o sentido dos deltas e atualiza a URL; as leituras já carregadas mudam
 de posição imediatamente enquanto a aplicação confirma novamente os dados públicos.
+Seguidores, perfis seguidos e repositórios públicos aparecem lado a lado como
+contagens neutras; nenhum deles é interpretado isoladamente como qualidade ou vitória.
 A comparação também pode ser baixada como CSV, com as cinco métricas públicas,
 os deltas e o estado de cada conquista para os dois perfis. Sinais indisponíveis
 permanecem vazios no arquivo em vez de serem convertidos em zero, e textos são
