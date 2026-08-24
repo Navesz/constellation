@@ -179,6 +179,9 @@ recentes ordenadas pela última observação, com um resumo dos seis sinais e
 acesso direto para remapear cada login. Esses atalhos são carregados antes da
 consulta atual e continuam disponíveis quando o GitHub ou a API falha; a tela de
 erro também permite tentar novamente sem apagar nem regravar a memória privada.
+Os logins dessa mesma memória aparecem ainda como sugestões nativas nos campos
+de busca e comparação. A seleção continua local até o formulário ser enviado,
+e navegadores sem suporte mantêm os campos de texto normais.
 
 Essa memória também pode ser baixada explicitamente como um backup JSON e
 restaurada em outro navegador. A importação valida o formato, mescla estados

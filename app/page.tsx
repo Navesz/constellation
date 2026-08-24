@@ -1566,6 +1566,7 @@ function Observatory() {
               defaultValue={routeLogin}
               placeholder="octocat"
               maxLength={40}
+              list="recent-github-profiles"
               autoComplete="off"
               spellCheck={false}
               aria-invalid={Boolean(searchError)}
@@ -1575,6 +1576,15 @@ function Observatory() {
               {showLoading ? "Mapeando…" : "Mapear perfil"}
             </button>
           </div>
+          <datalist id="recent-github-profiles">
+            {recentProfiles.map((profile) => (
+              <option
+                key={profile.login.toLowerCase()}
+                value={profile.login}
+                label={`${profile.observationCount} ${profile.observationCount === 1 ? "leitura local" : "leituras locais"}`}
+              />
+            ))}
+          </datalist>
           <p id="github-login-note">Somente dados públicos. Nenhum token é enviado pelo navegador.</p>
           {searchError ? <p className="search-error" id="github-login-error" role="alert">{searchError}</p> : null}
         </form>
@@ -1739,6 +1749,7 @@ function Observatory() {
                   defaultValue={comparisonLogin ?? ""}
                   placeholder="monalisa"
                   maxLength={40}
+                  list="recent-github-profiles"
                   autoComplete="off"
                   spellCheck={false}
                   aria-invalid={Boolean(comparisonFormError)}
