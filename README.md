@@ -240,3 +240,7 @@ lê somente selos exibidos publicamente. Contadores privados não são expostos;
 para conquistas sem contador público, o painel usa o menor valor confirmado
 pelo nível visível. Selos que o Constellation ainda não conhece também são
 exibidos, mas ficam explicitamente sem critério ou estimativa de progresso.
+
+## Licença
+
+Código sob [Apache-2.0](LICENSE).
