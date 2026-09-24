@@ -1,6 +1,7 @@
 {
   "name": "constellation-profile-observatory",
   "version": "0.1.0",
+  "license": "Apache-2.0",
   "description": "Observatório honesto de perfis, conquistas e sinais públicos do GitHub.",
   "private": true,
   "repository": {
